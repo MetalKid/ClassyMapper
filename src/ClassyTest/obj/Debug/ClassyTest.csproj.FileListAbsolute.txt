@@ -1,0 +1,8 @@
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Debug\ClassyTest.dll
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Debug\ClassyTest.pdb
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Debug\Classy.dll
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Debug\Classy.pdb
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\obj\Debug\ClassyTest.csprojResolveAssemblyReference.cache
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\obj\Debug\ClassyTest.dll
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\obj\Debug\ClassyTest.pdb
+C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Debug\Classy.xml
