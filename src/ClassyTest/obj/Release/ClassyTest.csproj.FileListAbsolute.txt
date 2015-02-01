@@ -1,8 +1,0 @@
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Release\ClassyTest.dll
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Release\ClassyTest.pdb
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Release\Classy.dll
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Release\Classy.pdb
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\obj\Release\ClassyTest.csprojResolveAssemblyReference.cache
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\obj\Release\ClassyTest.dll
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\obj\Release\ClassyTest.pdb
-C:\Programming\Git\ClassyMapper\Classy\src\ClassyTest\bin\Release\Classy.xml

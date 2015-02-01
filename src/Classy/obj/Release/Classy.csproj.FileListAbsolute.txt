@@ -1,5 +1,0 @@
-C:\Programming\Git\ClassyMapper\Classy\src\Classy\bin\Release\Classy.dll
-C:\Programming\Git\ClassyMapper\Classy\src\Classy\bin\Release\Classy.pdb
-C:\Programming\Git\ClassyMapper\Classy\src\Classy\obj\Release\Classy.dll
-C:\Programming\Git\ClassyMapper\Classy\src\Classy\obj\Release\Classy.pdb
-C:\Programming\Git\ClassyMapper\Classy\src\Classy\bin\Release\Classy.XML
