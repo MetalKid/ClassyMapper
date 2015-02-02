@@ -653,9 +653,17 @@ namespace Classy
                 // If target property is a string, just call ToString on whatever source property is
                 toProp.SetValue(toObject, value == null ? null : value.ToString(), null);
             }
-            else if (toProp.PropertyType.IsEnum && toProp.PropertyType.GetEnumUnderlyingType() == fromProp.PropertyType)
+            else if (toProp.PropertyType.IsEnum && 
+                (toProp.PropertyType.GetEnumUnderlyingType() == fromProp.PropertyType || 
+                    fromProp.PropertyType == _stringType))
             {
-                toProp.SetValue(toObject, Enum.Parse(toProp.PropertyType, value.ToString(), Config.IgnoreEnumCase), null);
+                if (Enum.IsDefined(toProp.PropertyType, value))
+                {
+                    toProp.SetValue(
+                        toObject,
+                        Enum.Parse(toProp.PropertyType, value.ToString(), Config.IgnoreEnumCase),
+                        null);
+                }
             }
             else if (fromProp.PropertyType.IsEnum && fromProp.PropertyType.GetEnumUnderlyingType() == toProp.PropertyType)
             {

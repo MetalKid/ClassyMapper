@@ -32,7 +32,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -47,7 +47,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
         #endregion
@@ -66,7 +66,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
-            Assert.AreEqual(TestEnum.MyValue, result.MyTest, "Property 'MyTest' Does not match.");
+            Assert.AreEqual(TestEnum.MyValue, result.MyTest, "Property 'MyTest' does not match.");
         }
 
 
@@ -82,7 +82,52 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
-            Assert.AreEqual(1, result.MyTest, "Property 'MyTest' Does not match.");
+            Assert.AreEqual(1, result.MyTest, "Property 'MyTest' does not match.");
+        }
+
+        [TestMethod]
+        public void MapEntityToDtoWithEnum_AllProperties_EnumDoesNotExst()
+        {
+            // Arrange
+            EnumEntity input = new EnumEntity { MyTest = 12, TesterId = 9304 };
+
+            // Act
+            var result = ClassyMapper.New().Map<EnumDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
+            Assert.AreEqual(TestEnum.Unknown, result.MyTest, "Property 'MyTest' does not match.");
+        }
+
+        [TestMethod]
+        public void MapEntityToDtoWithEnum_AllProperties_StringToEnum()
+        {
+            // Arrange
+            EnumEntity2 input = new EnumEntity2 { MyTest = "MyValue", TesterId = 9304 };
+
+            // Act
+            var result = ClassyMapper.New().Map<EnumDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
+            Assert.AreEqual(TestEnum.MyValue, result.MyTest, "Property 'MyTest' does not match.");
+        }
+
+        [TestMethod]
+        public void MapEntityToDtoWithEnum_AllProperties_EnumToString()
+        {
+            // Arrange
+            EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304 };
+
+            // Act
+            var result = ClassyMapper.New().Map<EnumEntity2>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
+            Assert.AreEqual("MyValue", result.MyTest, "Property 'MyTest' does not match.");
         }
 
         #endregion
@@ -105,7 +150,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.B, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
 
@@ -125,7 +170,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.B, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
         #endregion
@@ -148,8 +193,8 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
-            Assert.AreEqual(input2.C, result.C, "Property 'C' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input2.C, result.C, "Property 'C' does not match.");
         }
 
         [TestMethod]
@@ -172,11 +217,11 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input[0].A, result[0].A, "[0] Property 'A' does not match.");
-            Assert.AreEqual(input[0].B, result[0].B, "[0] Property 'B' Does not match.");
+            Assert.AreEqual(input[0].B, result[0].B, "[0] Property 'B' does not match.");
             Assert.AreEqual(input[1].A, result[1].A, "[1] Property 'A' does not match.");
-            Assert.AreEqual(input[1].B, result[1].B, "[1] Property 'B' Does not match.");
-            Assert.AreEqual(input2.C, result[0].C, "[0] Property 'C' Does not match.");
-            Assert.AreEqual(input2.C, result[1].C, "[0] Property 'C' Does not match.");
+            Assert.AreEqual(input[1].B, result[1].B, "[1] Property 'B' does not match.");
+            Assert.AreEqual(input2.C, result[0].C, "[0] Property 'C' does not match.");
+            Assert.AreEqual(input2.C, result[1].C, "[0] Property 'C' does not match.");
         }
 
         #endregion
@@ -203,14 +248,14 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input[0].A, result[0].A, "[0] Property 'A' does not match.");
-            Assert.AreEqual(input[0].B, result[0].B, "[0] Property 'B' Does not match.");
-            Assert.AreEqual(input[0].Inner.D, result[0].F, "[0] Property 'F' Does not match.");
+            Assert.AreEqual(input[0].B, result[0].B, "[0] Property 'B' does not match.");
+            Assert.AreEqual(input[0].Inner.D, result[0].F, "[0] Property 'F' does not match.");
             Assert.AreEqual(input[1].A, result[1].A, "[1] Property 'A' does not match.");
-            Assert.AreEqual(input[1].B, result[1].B, "[1] Property 'B' Does not match.");
-            Assert.AreEqual(input[1].Inner.D, result[1].F, "[1] Property 'F' Does not match.");
+            Assert.AreEqual(input[1].B, result[1].B, "[1] Property 'B' does not match.");
+            Assert.AreEqual(input[1].Inner.D, result[1].F, "[1] Property 'F' does not match.");
 
-            Assert.AreEqual(input2.C, result[0].C, "[0] Property 'C' Does not match.");
-            Assert.AreEqual(input2.C, result[1].C, "[0] Property 'C' Does not match.");
+            Assert.AreEqual(input2.C, result[0].C, "[0] Property 'C' does not match.");
+            Assert.AreEqual(input2.C, result[1].C, "[0] Property 'C' does not match.");
         }
 
         #endregion
@@ -229,7 +274,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B.ToString(CultureInfo.InvariantCulture), result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B.ToString(CultureInfo.InvariantCulture), result.B, "Property 'B' does not match.");
             Assert.AreEqual(input.Inner.B, result.Inner.B, "Property 'Inner.B' does not match.");
         }
 
@@ -245,7 +290,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B.ToString(CultureInfo.InvariantCulture), result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B.ToString(CultureInfo.InvariantCulture), result.B, "Property 'B' does not match.");
             Assert.AreEqual(null, result.Inner, "Property 'Inner' does not match.");
         }
 
@@ -263,7 +308,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B.ToString(CultureInfo.InvariantCulture), result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B.ToString(CultureInfo.InvariantCulture), result.B, "Property 'B' does not match.");
             Assert.AreEqual(true, result.Inner.IsNull, "Property 'Inner' does not match.");
         }
 
@@ -391,7 +436,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(0, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(DateTime.MinValue, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(DateTime.MinValue, result.B, "Property 'B' does not match.");
             Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
             Assert.AreEqual(input.D, result.D, "Property 'D' does not match.");
         }
@@ -408,7 +453,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
             Assert.AreEqual(0, result.C, "Property 'C' does not match.");
             Assert.AreEqual(DateTime.MinValue, result.D, "Property 'D' does not match.");
         }
@@ -425,7 +470,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
             Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
             Assert.AreEqual(input.D, result.D, "Property 'D' does not match.");
         }
@@ -442,7 +487,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
             Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
             Assert.AreEqual(input.D, result.D, "Property 'D' does not match.");
         }
@@ -498,7 +543,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input2.A, result.AA, "Property 'AA' Does not match.");
+            Assert.AreEqual(input2.A, result.AA, "Property 'AA' does not match.");
         }
 
         #endregion
@@ -563,9 +608,9 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.List.Count, result.List.Count, "Property 'List' Does not match.");
-            Assert.AreEqual(input.List[0].A, result.List[0].A, "Property 'List[0].A' Does not match.");
-            Assert.AreEqual(input.List[1].A, result.List[1].A, "Property 'List[1].A' Does not match.");
+            Assert.AreEqual(input.List.Count, result.List.Count, "Property 'List' does not match.");
+            Assert.AreEqual(input.List[0].A, result.List[0].A, "Property 'List[0].A' does not match.");
+            Assert.AreEqual(input.List[1].A, result.List[1].A, "Property 'List[1].A' does not match.");
         }
 
         [TestMethod]
@@ -588,9 +633,9 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.List.Count, result.List.Count, "Property 'List' Does not match.");
-            Assert.AreEqual(input.List[0].A, result.List[0].A, "Property 'List[0].A' Does not match.");
-            Assert.AreEqual(input.List[1].A, result.List[1].A, "Property 'List[1].A' Does not match.");
+            Assert.AreEqual(input.List.Count, result.List.Count, "Property 'List' does not match.");
+            Assert.AreEqual(input.List[0].A, result.List[0].A, "Property 'List[0].A' does not match.");
+            Assert.AreEqual(input.List[1].A, result.List[1].A, "Property 'List[1].A' does not match.");
         }
 
         [TestMethod]
@@ -608,7 +653,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(0, result.List.Count, "Property 'List' Does not match.");
+            Assert.AreEqual(0, result.List.Count, "Property 'List' does not match.");
         }
 
         [TestMethod]
@@ -626,7 +671,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(0, result.List.Count, "Property 'List' Does not match.");
+            Assert.AreEqual(0, result.List.Count, "Property 'List' does not match.");
         }
 
         [TestMethod]
@@ -644,7 +689,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(null, result.List, "Property 'List' Does not match.");
+            Assert.AreEqual(null, result.List, "Property 'List' does not match.");
         }
 
         [TestMethod]
@@ -662,7 +707,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(null, result.List, "Property 'List' Does not match.");
+            Assert.AreEqual(null, result.List, "Property 'List' does not match.");
         }
 
         #endregion
@@ -682,7 +727,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -698,7 +743,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -714,7 +759,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(0, result.TesterId, "Property 'TesterId' does not match.");
-            Assert.AreEqual(TestEnum.Unknown, result.MyTest, "Property 'MyTest' Does not match.");
+            Assert.AreEqual(TestEnum.Unknown, result.MyTest, "Property 'MyTest' does not match.");
         }
 
         #endregion
@@ -733,7 +778,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(string.Empty, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(string.Empty, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(string.Empty, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -748,7 +793,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(string.Empty, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(string.Empty, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(string.Empty, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -764,7 +809,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(defaultString, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(defaultString, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(defaultString, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -780,7 +825,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(defaultString, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(defaultString, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(defaultString, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -795,7 +840,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual("G", result.A, "Property 'A' does not match.");
-            Assert.AreEqual("H", result.B, "Property 'B' Does not match.");
+            Assert.AreEqual("H", result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -811,7 +856,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual("G", result.A, "Property 'A' does not match.");
-            Assert.AreEqual("H", result.B, "Property 'B' Does not match.");
+            Assert.AreEqual("H", result.B, "Property 'B' does not match.");
         }
       
         [TestMethod]
@@ -826,7 +871,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual("G", result.A, "Property 'A' does not match.");
-            Assert.AreEqual(string.Empty, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(string.Empty, result.B, "Property 'B' does not match.");
         }
 
         [TestMethod]
@@ -842,7 +887,7 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual("G", result.A, "Property 'A' does not match.");
-            Assert.AreEqual(defaultString, result.B, "Property 'B' Does not match.");
+            Assert.AreEqual(defaultString, result.B, "Property 'B' does not match.");
         }
       
         #endregion
@@ -865,14 +910,14 @@ namespace ClassyTest
             Assert.IsNotNull(result);
             Assert.AreEqual("1", result.A, "Property 'A' does not match.");
             Assert.AreEqual("1", input.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.AA, result.AA, "Property 'AA' Does not match.");
-            Assert.AreEqual(input.YZAK, result.YZAK, "Property 'YZAK' Does not match.");
-            Assert.AreEqual(input.YZAN, result.YZAN, "Property 'YZAN' Does not match.");
-            Assert.AreEqual(input.YZAM, result.YZAM, "Property 'YZAM' Does not match.");
-            Assert.AreEqual(input.YZAL, result.YZAL, "Property 'YZAL' Does not match.");
-            Assert.AreEqual(input.YZAJ, result.YZAJ, "Property 'YZAJ' Does not match.");
-            Assert.AreEqual(input.YZAI, result.YZAI, "Property 'YZAI' Does not match.");
-            Assert.AreEqual(input.ZAD, result.ZAD, "Property 'ZAD' Does not match.");
+            Assert.AreEqual(input.AA, result.AA, "Property 'AA' does not match.");
+            Assert.AreEqual(input.YZAK, result.YZAK, "Property 'YZAK' does not match.");
+            Assert.AreEqual(input.YZAN, result.YZAN, "Property 'YZAN' does not match.");
+            Assert.AreEqual(input.YZAM, result.YZAM, "Property 'YZAM' does not match.");
+            Assert.AreEqual(input.YZAL, result.YZAL, "Property 'YZAL' does not match.");
+            Assert.AreEqual(input.YZAJ, result.YZAJ, "Property 'YZAJ' does not match.");
+            Assert.AreEqual(input.YZAI, result.YZAI, "Property 'YZAI' does not match.");
+            Assert.AreEqual(input.ZAD, result.ZAD, "Property 'ZAD' does not match.");
         }
 
         #endregion
@@ -891,9 +936,9 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
-            Assert.AreEqual(input.C, result.C, "Property 'C' Does not match.");
-            Assert.AreEqual(input.D, result.D, "Property 'D' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
+            Assert.AreEqual(input.D, result.D, "Property 'D' does not match.");
         }
 
         [TestMethod]
@@ -908,9 +953,9 @@ namespace ClassyTest
             // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
-            Assert.AreEqual(input.B, result.B, "Property 'B' Does not match.");
-            Assert.AreEqual(input.C, result.C, "Property 'C' Does not match.");
-            Assert.AreEqual(input.D, result.D, "Property 'D' Does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
+            Assert.AreEqual(input.D, result.D, "Property 'D' does not match.");
         }
 
         #endregion
@@ -951,8 +996,76 @@ namespace ClassyTest
 
         #endregion
 
+        #region << Parent/Child Reference Tests >>
+
+        [TestMethod]
+        public void MapEntityToDto_ParentChildReference_AllProperties()
+        {
+            // Arrange
+            ParentEntity input = new ParentEntity { Test = "1", Children = new List<ChildEntity>() };
+            input.Children.Add(new ChildEntity { ChildA = "A", Parent = input });
+            input.Children.Add(new ChildEntity { ChildA = "B", Parent = input });
+
+            // Act
+            var result = ClassyMapper.New().Map<ParentDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.Test, result.Test, "Property 'A' does not match.");
+            Assert.AreEqual(input.Children.Count, result.Children.Count, "Property 'Children.Count' does not match.");
+            Assert.AreEqual(input.Children.First().ChildA, result.Children.First().ChildA, "Property 'Children[0].ChildA' does not match.");
+            Assert.AreEqual(result, result.Children.First().Parent, "Property 'Children[0].Parent' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_ParentChildReference_AllProperties()
+        {
+            // Arrange
+            ParentDto input = new ParentDto { Test = "1", Children = new List<ChildDto>() };
+            input.Children.Add(new ChildDto { ChildA = "A", Parent = input });
+            input.Children.Add(new ChildDto { ChildA = "B", Parent = input });
+
+            // Act
+            var result = ClassyMapper.New().Map<ParentEntity>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.Test, result.Test, "Property 'A' does not match.");
+            Assert.AreEqual(input.Children.Count, result.Children.Count, "Property 'Children.Count' does not match.");
+            Assert.AreEqual(input.Children.First().ChildA, result.Children.First().ChildA, "Property 'Children[0].ChildA' does not match.");
+            Assert.AreEqual(result, result.Children.First().Parent, "Property 'Children[0].Parent' does not match.");
+        }
+
+        #endregion
 
         #region << Private Classes >>
+
+        private class ParentEntity
+        {
+            public string Test { get; set; }
+            public ICollection<ChildEntity> Children { get; set; }
+        }
+
+        private class ChildEntity
+        {
+            public string ChildA { get; set; }
+            public ParentEntity Parent { get; set; }
+        }
+
+        [MapClass]
+        private class ParentDto
+        {
+            public string Test { get; set; }
+            public IList<ChildDto> Children { get; set; }
+        }
+
+        [MapClass]
+        private class ChildDto
+        {
+            public string ChildA { get; set; }
+            public ParentDto Parent { get; set; }
+        }
+
 
         private class MapClassEntity 
         {
@@ -1263,6 +1376,13 @@ namespace ClassyTest
 
         }
 
+        private class EnumEntity2
+        {
+
+            public long TesterId { get; set; }
+            public string MyTest { get; set; }
+
+        }
         private class EnumDto
         {
 
