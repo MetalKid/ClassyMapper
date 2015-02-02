@@ -242,6 +242,8 @@ public enum TheValue  // int is default
 ```
 Then you can map the same way you normally do (like Basic example) and it'll carry it over for you.  If you go from the Dto to the entity, it will convert it back to the int for you, too!  However, if you try to assign a value to the enum that is not defined, the property will not be set so the value will be whatever the defualt Enum value is.
 
+If the enum is coming from a string, it will automatically try to map that as well, in both directions.
+
 SubList Mapping
 --------------------------------
 ClassyMapper will map sub lists for you as well, assuming they implement IEnumerable.  However, the property must be compatible with IList<T> or it won't be able to map it.  ClassyMapper needs to be able to call Add when it loops through and maps each individual object.  Here is an example:
