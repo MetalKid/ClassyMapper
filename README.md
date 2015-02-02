@@ -41,7 +41,8 @@ You don't even have to put any MapProperty attributes on the entity:
 var entity = ClassyMapper.New().Map<SomeEntity>(dto);
 ```
 
-!! Full Class Mapping
+Full Class Mapping
+--------------------------------
 Sometimes, you may want to map all the properties.  If you have 100 properties to map, adding [MapProperty] could get tedious.  Thus, you can attribute the class with [MapClass] and ClassyMapper will try to map all the properties based upon their given PropertyName.  You can still add [MapProperty] if you need to change a few names and they will be included.
 
 ```csharp
@@ -56,7 +57,8 @@ public class SomeDto
 
 The call is the same as in the basic version.
 
-!! Custom Mapping
+Custom Mapping
+--------------------------------
 You may want to do the bulk of your mapping with ClassyMapper, but there are scenarios that require complicated logic to do that mapping.  You can pass in a method for this scenario.  For example:
 
 ```csharp
@@ -84,6 +86,7 @@ var dto = ClassyMapper.New().RegisterCustomMap<SomeEntity, SomeDto>((from, to) =
 })
 .Map<SomeDto>(entity);
 ```
+
 Obviously, you can pass in a specific method here if you need to reuse this more than once.  If you go backwards from Dto to Entity, then you will need a different Map <SomeDto, SomeEntity> or it won't get called. The To object will have been fully mapped by now, too.
 
 Multiple From Objects
