@@ -32,6 +32,12 @@ var entity = new SomeEntity { A = "1", B = "2" };
 var dto = ClassyMapper.New().Map<SomeDto>(entity);
 ```
 
+or you can do this:
+
+```csharp
+var dto = new ClassyMapper().Map<SomeDto>(entity);
+```
+
 The dto now stores all the data the entity did!
 
 Let's say you want to go from that Dto back to the Entity. No problem!  You don't even have to put any MapProperty attributes on the entity:
@@ -317,9 +323,33 @@ input.Children.Add(new ChildEntity { ChildA = "B", Parent = input });
 var dto = ClassyMapper.New().Map<ParentDto>(input);
 ```
 
+[New] Custom Constructors
+--------------------------------
+ClassyMapper just got the ability to register a callback to instantiate new To classes for the current from object. You can set it up like this:
+
+```csharp
+public class SomeDto
+{
+    [MapProperty]
+    public string A { get; set; }
+ 
+    public SomeDto(string a)
+    {
+        A = a;
+    }
+}
+
+var dto = ClassyMapper.New()
+                   .RegisterConstructor<SomeEntity,SomeDto>(from => new SomeDto("1"))
+                   .Map<SomeDto>(input);
+```
+However, if the From object being mapped from is null, ClassyMapper won't be able to figure out the From type and will call the parameterless constructor on the To type instead. [Let me know if you need a way to register a call back that does not take in the From object.]
+
 ClassyMapperConfig
 --------------------------------
-A few configuration properties can be set when calling ClassyMapper.New():
+A few configuration properties can be set when calling ClassyMapper.New(config) or new ClassyMapper(config):
+
+ExpressionTreeGetSetCalls - If this is set to true, ClassyMapper will get/set values via an Expression Tree instead of via straight Reflection. However, this only ends up faster if you are working with a lot of objects/properties during a map. If you have a smaller amount, straight reflection ends up being faster due to the overhead of having to compile the Expression Tree first. - Default: False
 
 CreateToObjectFromNullFromObject - This tells ClassyMapper to create an instance of the To object even if the From object was null. You might do this in a RDLC (local SSRS) file so you can ignore a ton of IsNot Nothing checks. - Default: False
 
@@ -330,6 +360,10 @@ MapEmptyListFromNullList - If the From has a list that ends up being null, then 
 ThrowExceptionIfNoMatchingPropertyFound - If you always expect your To Object properties to be fully mapped (i.e. you can match every MapProperty on the To Object to a corresponding one on the From object(s)), then setting this to True will throw an exception is this is not the case. - Default: False
 
 IgnoreEnumCase - When an enum is mapped from a string property, this will cause the Enum.Parse call to ignore case if set to true. - Default: True
+
+[New] IClassyMapper
+--------------------------------
+IClassyMapper was added to support IoC injecting ClassyMapper wherever you need/want to.
 
 IIsNullable
 --------------------------------
