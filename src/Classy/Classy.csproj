@@ -47,13 +47,14 @@
     <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Attributes\MapClassAttribute.cs" />
+    <Compile Include="Attributes\MapAllPropertiesAttribute.cs" />
     <Compile Include="Attributes\MapPropertyAttribute.cs" />
     <Compile Include="Attributes\MapPropertyTimestamp.cs" />
     <Compile Include="ClassyMapper.cs" />
     <Compile Include="ClassyMapperConfig.cs" />
     <Compile Include="Exceptions\MappingException.cs" />
     <Compile Include="Interfaces\IClassyMapper.cs" />
+    <Compile Include="Interfaces\IClassyMapperConfig.cs" />
     <Compile Include="Interfaces\IIsNullable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

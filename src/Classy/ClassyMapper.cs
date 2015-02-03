@@ -2,10 +2,12 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading.Tasks;
 using Classy.Attributes;
 using Classy.Exceptions;
 using Classy.Interfaces;
@@ -24,26 +26,23 @@ namespace Classy
 
         #region << Static Variables >>
 
-        private static readonly object _propertyInfoCacheLock = new object();
-        private static readonly object _mapPropertyCacheLock = new object();
-
         // Cache reflection calls to speed up performance
-        private static readonly IDictionary<Type, PropertyInfo[]> _propertyInfoCache =
-            new Dictionary<Type, PropertyInfo[]>();
-        private static readonly IDictionary<PropertyInfo, MapPropertyAttribute> _mapPropertyCache =
-            new Dictionary<PropertyInfo, MapPropertyAttribute>();
-        private static readonly IDictionary<Type, MapClassAttribute> _mapClassCache =
-            new Dictionary<Type, MapClassAttribute>();
-        private static readonly IDictionary<PropertyInfo, Action<object, object>> _setterMaps =
-            new Dictionary<PropertyInfo, Action<object, object>>();
-        private static readonly IDictionary<PropertyInfo, Func<object, object>> _getterMaps =
-            new Dictionary<PropertyInfo, Func<object, object>>();
+        private static readonly ConcurrentDictionary<Type, PropertyInfo[]> _propertyInfoCache =
+            new ConcurrentDictionary<Type, PropertyInfo[]>();
+        private static readonly ConcurrentDictionary<PropertyInfo, MapPropertyAttribute> _mapPropertyCache =
+            new ConcurrentDictionary<PropertyInfo, MapPropertyAttribute>();
+        private static readonly ConcurrentDictionary<Type, MapAllPropertiesAttribute> _mapAllPropertiesCache =
+            new ConcurrentDictionary<Type, MapAllPropertiesAttribute>();
+        private static readonly ConcurrentDictionary<PropertyInfo, Action<object, object>> _setterMaps =
+            new ConcurrentDictionary<PropertyInfo, Action<object, object>>();
+        private static readonly ConcurrentDictionary<PropertyInfo, Func<object, object>> _getterMaps =
+            new ConcurrentDictionary<PropertyInfo, Func<object, object>>();
 
         // These types are used often, so perform this once
         private readonly static Type _nullableType = typeof(Nullable<>);
         private readonly static Type _listType = typeof(List<>);
         private readonly static Type _stringType = typeof(string);
-        private readonly static Type _mapClassAttributeType = typeof(MapClassAttribute);
+        private readonly static Type _mapAllPropertiesAttributeType = typeof(MapAllPropertiesAttribute);
         private readonly static Type _mapPropertyAttributeType = typeof(MapPropertyAttribute);
         private readonly static Type _iEnumerableType = typeof (IEnumerable);
 
@@ -52,11 +51,21 @@ namespace Classy
         #region << Static Mapper Methods >>
 
         /// <summary>
+        /// Clear all PropertyInfo, MapPropertyAttribute, and MapAllPropertiesAttribute caching.
+        /// </summary>
+        public static void ClearCacheObjects()
+        {
+            _propertyInfoCache.Clear();
+            _mapPropertyCache.Clear();
+            _mapAllPropertiesCache.Clear();
+        }
+
+        /// <summary>
         /// Returns a new instance of ClassyMapper.
         /// </summary>
         /// <param name="config">Configuration data on how the objects will be mapped.</param>
         /// <returns>A new instance of ClassyMapper.</returns>
-        public static ClassyMapper New(ClassyMapperConfig config = null)
+        public static IClassyMapper New(IClassyMapperConfig config = null)
         {
             return new ClassyMapper(config);
         }
@@ -84,7 +93,7 @@ namespace Classy
 
             foreach (var toProp in toProps)
             {
-                var fromProp = fromProps.SingleOrDefault(a => a.Name == toProp.Name);
+                var fromProp = fromProps.FirstOrDefault(a => a.Name == toProp.Name);
                 if (fromProp == null || !toProp.CanWrite || !fromProp.CanRead)
                 {
                     continue;
@@ -188,42 +197,36 @@ namespace Classy
         /// <returns>List of PropertyInfo.</returns>
         private static PropertyInfo[] GetPropertyInfos(Type type)
         {
-            lock (_propertyInfoCacheLock)
+            PropertyInfo[] result;
+            if (_propertyInfoCache.TryGetValue(type, out result))
             {
-                PropertyInfo[] result;
-                if (_propertyInfoCache.TryGetValue(type, out result))
-                {
-                    return result;
-                }
-
-                result = type.GetProperties();
-                _propertyInfoCache.Add(type, result);
                 return result;
             }
+
+            result = type.GetProperties();
+            _propertyInfoCache.AddOrUpdate(type, result, (info, orig) => orig);
+            return result;
         }
 
         /// <summary>
-        /// Returns the MapClass attribute for the given type, if it exists; Checks a cache, first.
+        /// Returns the MapAllProperties attribute for the given type, if it exists; Checks a cache, first.
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        private static MapClassAttribute GetMapClassAttribute(Type type)
+        private static MapAllPropertiesAttribute GetMapAllPropertiesAttribute(Type type)
         {
-            lock (_mapPropertyCacheLock)
+            MapAllPropertiesAttribute result;
+            if (_mapAllPropertiesCache.TryGetValue(type, out result))
             {
-                MapClassAttribute result;
-                if (_mapClassCache.TryGetValue(type, out result))
-                {
-                    return result;
-                }
-
-                result =
-                    type.GetCustomAttributes(_mapClassAttributeType, false).FirstOrDefault() as
-                        MapClassAttribute;
-
-                _mapClassCache.Add(type, result);
                 return result;
             }
+
+            result =
+                type.GetCustomAttributes(_mapAllPropertiesAttributeType, false).FirstOrDefault() as
+                    MapAllPropertiesAttribute;
+
+            _mapAllPropertiesCache.AddOrUpdate(type, result, (info, orig) => orig);
+            return result;
         }
 
         /// <summary>
@@ -233,21 +236,18 @@ namespace Classy
         /// <returns>MapPropertyAttribute or null if it does not exist.</returns>
         private static MapPropertyAttribute GetMapPropertyAttribute(PropertyInfo pi)
         {
-            lock (_mapPropertyCacheLock)
+            MapPropertyAttribute result;
+            if (_mapPropertyCache.TryGetValue(pi, out result))
             {
-                MapPropertyAttribute result;
-                if (_mapPropertyCache.TryGetValue(pi, out result))
-                {
-                    return result;
-                }
-
-                result =
-                    pi.GetCustomAttributes(_mapPropertyAttributeType, false).FirstOrDefault() as
-                        MapPropertyAttribute;
-
-                _mapPropertyCache.Add(pi, result);
                 return result;
             }
+
+            result =
+                pi.GetCustomAttributes(_mapPropertyAttributeType, false).FirstOrDefault() as
+                    MapPropertyAttribute;
+
+            _mapPropertyCache.AddOrUpdate(pi, result, (info, orig) => orig);
+            return result;
         }
 
         #endregion
@@ -266,7 +266,7 @@ namespace Classy
         /// <summary>
         /// Gets the configuration data on how the objects will be mapped.
         /// </summary>
-        public ClassyMapperConfig Config { get; private set; }
+        public IClassyMapperConfig Config { get; private set; }
 
         #endregion
 
@@ -276,7 +276,7 @@ namespace Classy
         /// Constructor that initializes all variables/properties.
         /// </summary>
         /// <param name="config">Configuration data on how the objects will be mapped.</param>
-        public ClassyMapper(ClassyMapperConfig config = null)
+        public ClassyMapper(IClassyMapperConfig config = null)
         {
             Config = config ?? new ClassyMapperConfig();
 
@@ -297,7 +297,7 @@ namespace Classy
         /// <typeparam name="TTo">The type of object being mapped to.</typeparam>
         /// <param name="method">The method to invoke.</param>
         /// <returns>Instance of this ClassyMapper for chaining.</returns>
-        public ClassyMapper RegisterCustomMap<TFrom, TTo>(Action<TFrom, TTo> method)
+        public IClassyMapper RegisterCustomMap<TFrom, TTo>(Action<TFrom, TTo> method)
         {
             _customMaps.Add(GetCustomMapKey(typeof(TFrom), typeof(TTo)), method);
             return this;
@@ -310,7 +310,7 @@ namespace Classy
         /// <typeparam name="TFrom">The type of object being mapped from.</typeparam>
         /// <param name="func">The function to invoke when working with a TFrom object.</param>
         /// <returns>Instance of this ClassyMapper for chaining.</returns>
-        public ClassyMapper RegisterFromObjects<TFrom>(Func<TFrom, object[]> func)
+        public IClassyMapper RegisterFromObjects<TFrom>(Func<TFrom, object[]> func)
         {
             _fromObjects.Add(typeof(TFrom), func);
             return this;
@@ -323,7 +323,7 @@ namespace Classy
         /// <typeparam name="TTo">The type of object being created.</typeparam>
         /// <param name="method">The function to invoke when creating a new TTo from a TFrom mapping.</param>
         /// <returns>New instance of TTo.</returns>
-        public ClassyMapper RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method)
+        public IClassyMapper RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method)
         {
             _constructors.Add(GetCustomMapKey(typeof (TFrom), typeof (TTo)), method);
             return this;
@@ -338,26 +338,26 @@ namespace Classy
         /// <returns>IList of type TTo.</returns>
         public IList<TTo> MapToList<TTo, TFrom>(IEnumerable<TFrom> fromObjects)
         {
-            // Create an instance of the list to return.
-            var constructorInfo = _listType
-                .MakeGenericType(typeof(TTo))
-                .GetConstructor(Type.EmptyTypes);
-
-            if (constructorInfo == null)
-            {
-                throw new MappingException("List<T> no longer has a parameterless constructor.");
-            }
-
-            IList list = (IList)constructorInfo.Invoke(null);
             _alreadyMappedEntities.Clear();
 
-            // Map each entity and add them to the list.
-            foreach (var from in fromObjects)
+            ConcurrentDictionary<int, TTo> result = new ConcurrentDictionary<int, TTo>();
+            List<Task> tasks = new List<Task>();
+            int i = 0;
+            foreach(var from in fromObjects)
             {
-                list.Add((TTo)PerformMap(typeof(TTo), from));
+                var fromInner = from;
+                int currentIndex = i;
+                tasks.Add(
+                    Task.Factory.StartNew(
+                        () =>
+                        {
+                            var item = (TTo)PerformMap(typeof(TTo), fromInner);
+                            result.AddOrUpdate(currentIndex, item, (x, y) => item);
+                        }));
+                i++;
             }
-
-            return list as List<TTo>;
+            Task.WaitAll(tasks.ToArray());
+            return result.Select(a => a.Value).ToList();
         }
 
         /// <summary>
@@ -533,15 +533,10 @@ namespace Classy
         private object PerformMap(Type toType, object toObject, object from)
         {
             // Get all the properties for the to object we are about to create
-            var toMapClassAttr = GetMapClassAttribute(toType);
+            var toMapAllPropertiesAttr = GetMapAllPropertiesAttribute(toType);
 
             PropertyInfo[] toInfos = GetPropertyInfos(toType);
-            var toMapProperties =
-                toInfos.Select(
-                    a => new PropertyInfoMapProperty { PropertyInfo = a, MapProperty = GetMapPropertyAttribute(a) })
-                    .Where(a => a != null && (a.MapProperty != null || toMapClassAttr != null))
-                    .ToList();
-
+      
             object[] fromObjects = GetFromObjects(from);
 
             if (fromObjects.All(a => a == null))
@@ -574,7 +569,7 @@ namespace Classy
                     continue;
                 }
                 PerformMapOnFromProperties(toObject, toInfos, fromObject, fromInfos, propertiesMapped);
-                PerformMapOnToProperties(toObject, fromObject, fromInfos, propertiesMapped, toMapProperties);
+                PerformMapOnToProperties(toObject, fromObject, toMapAllPropertiesAttr, fromInfos, toInfos, propertiesMapped);
                 CheckForMappingExceptions(toObject, fromObject, propertiesMapped);
                 AssignCustomMap(toObject, fromObject);
             }
@@ -596,36 +591,31 @@ namespace Classy
             IEnumerable<PropertyInfo> fromInfos,
             IDictionary<PropertyInfo, bool> propertiesMapped)
         {
-            var fromMapClassAttr = GetMapClassAttribute(fromObject.GetType());
+            var fromMapAllPropertiesAttr = GetMapAllPropertiesAttribute(fromObject.GetType());
 
-            var fromMapProperties =
-                fromInfos.Select(
-                    a => new PropertyInfoMapProperty { PropertyInfo = a, MapProperty = GetMapPropertyAttribute(a) })
-                    .Where(a => a != null && (a.MapProperty != null || fromMapClassAttr != null))
-                    .ToList();
-
-            foreach (var fromMap in fromMapProperties)
+            foreach (var fromProp in fromInfos)
             {
-                if (!CanMap(fromMap.MapProperty, toObject))
+                var mapProperty = GetMapPropertyAttribute(fromProp);
+                if ((mapProperty == null && fromMapAllPropertiesAttr == null) ||
+                    !CanMap(mapProperty, toObject))
                 {
                     continue;
                 }
-                var name = GetName(fromMap.MapProperty, fromMap.PropertyInfo);
-                var fromProp = fromMap.PropertyInfo;
+                var name = GetName(mapProperty, fromProp);
                 if (!fromProp.CanRead)
                 {
                     continue;
                 }
                 propertiesMapped[fromProp] = false;
 
-                var toProp = toInfos.SingleOrDefault(a => a.Name == name);
+                var toProp = toInfos.FirstOrDefault(a => a.Name == name);
                 if (toProp == null || !toProp.CanWrite)
                 {
                     continue;
                 }
                 propertiesMapped[fromProp] = true;
 
-                AssignValue(fromMap.MapProperty, toObject, toProp, fromObject, fromProp);
+                AssignValue(mapProperty, toObject, toProp, fromObject, fromProp);
             }
         }
 
@@ -634,32 +624,35 @@ namespace Classy
         /// </summary>
         /// <param name="toObject">The instance of the object being mapped to.</param>
         /// <param name="fromObject">The instance of the object being mapped from.</param>
+        /// <param name="toMapAllPropertiesAttr">The MapAllPropertiesAttribute the To object has, if any.</param>
         /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
+        /// <param name="toInfos">The PropertyInfo objects of the To object.</param>
         /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
-        /// <param name="toMapProperties">The PropertyInfo and MapPropertyAttribute information.</param>
         private void PerformMapOnToProperties(
             object toObject,
             object fromObject,
+            MapAllPropertiesAttribute toMapAllPropertiesAttr,
             PropertyInfo[] fromInfos,
-            IDictionary<PropertyInfo, bool> propertiesMapped,
-            IEnumerable<PropertyInfoMapProperty> toMapProperties)
+            IEnumerable<PropertyInfo> toInfos,
+            IDictionary<PropertyInfo, bool> propertiesMapped)
         {
-            foreach (var toMap in toMapProperties)
+            foreach (var toProp in toInfos)
             {
-                if (!CanMap(toMap.MapProperty, fromObject))
+                var mapProperty = GetMapPropertyAttribute(toProp);
+                if ((mapProperty == null && toMapAllPropertiesAttr == null) || 
+                    !CanMap(mapProperty, fromObject))
                 {
                     continue;
                 }
-                var toProp = toMap.PropertyInfo;
                 propertiesMapped[toProp] = false;
-                var name = GetName(toMap.MapProperty, toMap.PropertyInfo);
-                var fromProp = fromInfos.SingleOrDefault(a => a.Name == name);
+                var name = GetName(mapProperty, toProp);
+                var fromProp = fromInfos.FirstOrDefault(a => a.Name == name);
                 if (fromProp == null || !fromProp.CanRead || !toProp.CanWrite)
                 {
                     continue;
                 }
                 propertiesMapped[toProp] = true;
-                AssignValue(toMap.MapProperty, toObject, toProp, fromObject, fromProp);
+                AssignValue(mapProperty, toObject, toProp, fromObject, fromProp);
             }
         }
 
@@ -722,14 +715,30 @@ namespace Classy
                 // Nothing to map
                 return;
             }
-            foreach (object item in valueList)
-            {
-                var childTo = PerformMap(toProp.PropertyType.GetGenericArguments()[0], item);
 
-                if (childTo != null)
-                {
-                    list.Add(childTo);
-                }
+            ConcurrentDictionary<int, object> result = new ConcurrentDictionary<int, object>();
+            List<Task> tasks = new List<Task>();
+            int i = 0;
+            foreach (var item in valueList)
+            {
+                var fromInner = item;
+                int currentIndex = i;
+                tasks.Add(
+                    Task.Factory.StartNew(
+                        () =>
+                        {
+                            var childTo = PerformMap(toProp.PropertyType.GetGenericArguments()[0], fromInner);
+                            if (childTo != null)
+                            {
+                                result.AddOrUpdate(currentIndex, childTo, (x, y) => childTo);
+                            }
+                        }));
+                i++;
+            }
+            Task.WaitAll(tasks.ToArray());
+            foreach (var item in result)
+            {
+                list.Add(item.Value);
             }
         }
 
@@ -749,11 +758,14 @@ namespace Classy
             depth++;
 
             // Only map nested, non-primitive types of objects in this scenario
-            foreach (
-                PropertyInfo toInfo in
-                    toInfos.Where(
-                        a => a.PropertyType.IsClass && !a.PropertyType.IsPrimitive && a.PropertyType != _stringType))
+            foreach (PropertyInfo toInfo in toInfos)
             {
+                if (!toInfo.PropertyType.IsClass || toInfo.PropertyType.IsPrimitive ||
+                    toInfo.PropertyType == _stringType)
+                {
+                    continue;
+                }
+
                 MapPropertyAttribute attr = GetMapPropertyAttribute(toInfo);
                 if (attr == null)
                 {
@@ -909,28 +921,26 @@ namespace Classy
         /// <param name="val">The value to set.</param>
         private void SetValue(object toObject, PropertyInfo propInfo, object val)
         {
-            if (!Config.ExpressionTreeGetSetCalls)
+            if (!Config.ExpressionTreeGetSetCalls || toObject.GetType().IsValueType)
             {
+                // Cannot use ExpressionTree when working with ValueTypes
                 propInfo.SetValue(toObject, val, null);
                 return;
             }
 
             Action<object, object> setter;
-            lock (_setterMaps)
+            if (!_setterMaps.TryGetValue(propInfo, out setter))
             {
-                if (!_setterMaps.TryGetValue(propInfo, out setter))
-                {
-                    var target = Expression.Parameter(typeof(object), "obj");
-                    var value = Expression.Parameter(typeof(object), "value");
-                    var body =
-                        Expression.Assign(
-                            Expression.Property(Expression.Convert(target, toObject.GetType()), propInfo),
-                            Expression.Convert(value, propInfo.PropertyType));
+                var target = Expression.Parameter(typeof(object), "obj");
+                var value = Expression.Parameter(typeof(object), "value");
+                var body =
+                    Expression.Assign(
+                        Expression.Property(Expression.Convert(target, toObject.GetType()), propInfo),
+                        Expression.Convert(value, propInfo.PropertyType));
 
-                    var lambda = Expression.Lambda<Action<object, object>>(body, target, value);
-                    setter = lambda.Compile();
-                    _setterMaps.Add(propInfo, setter);
-                }
+                var lambda = Expression.Lambda<Action<object, object>>(body, target, value);
+                setter = lambda.Compile();
+                _setterMaps.AddOrUpdate(propInfo, setter, (info, orig) => orig);
             }
             setter(toObject, val);
         }
@@ -949,22 +959,19 @@ namespace Classy
             }
 
             Func<object, object> getter;
-            lock (_getterMaps)
+            if (_getterMaps.TryGetValue(propInfo, out getter))
             {
-                if (_getterMaps.TryGetValue(propInfo, out getter))
-                {
-                    return getter(fromObject);
-                }
-                var target = Expression.Parameter(typeof(object), "obj");
-
-                var body =
-                    Expression.Convert(
-                        Expression.Property(Expression.Convert(target, fromObject.GetType()), propInfo),
-                        typeof(object));
-                var lambda = Expression.Lambda<Func<object, object>>(body, target);
-                getter = lambda.Compile();
-                _getterMaps.Add(propInfo, getter);
+                return getter(fromObject);
             }
+            var target = Expression.Parameter(typeof(object), "obj");
+
+            var body =
+                Expression.Convert(
+                    Expression.Property(Expression.Convert(target, fromObject.GetType()), propInfo),
+                    typeof(object));
+            var lambda = Expression.Lambda<Func<object, object>>(body, target);
+            getter = lambda.Compile();
+            _getterMaps.AddOrUpdate(propInfo, getter, (info, orig) => orig);
             return getter(fromObject);
         }
 
@@ -1003,15 +1010,25 @@ namespace Classy
             {
                 return;
             }
-            var notMapped = propertiesMapped.Where(a => !a.Value).ToList();
-            if (notMapped.Count > 0)
+
+            IList<string> notMappedNames = new List<string>();
+            foreach (var pair in propertiesMapped)
+            {
+                if (pair.Value)
+                {
+                    continue;
+                }
+                notMappedNames.Add(pair.Key.Name);
+            }
+
+            if (notMappedNames.Count > 0)
             {
                 throw new MappingException(
                     string.Format(
                         "The following properties were not mapped from type '{0}' to type '{1}': {2}",
                         fromObject.GetType().FullName,
                         toObject.GetType().FullName,
-                        string.Join(", ", notMapped.Select(a => a.Key.Name))));
+                        string.Join(", ", notMappedNames)));
             }
         }
 
@@ -1075,16 +1092,6 @@ namespace Classy
         private static string GetName(MapPropertyAttribute attr, PropertyInfo pi)
         {
             return attr == null || string.IsNullOrEmpty(attr.PropertyName) ? pi.Name : attr.PropertyName;
-        }
-
-        #endregion
-
-        #region << Private Classes >>
-
-        private class PropertyInfoMapProperty
-        {
-            public PropertyInfo PropertyInfo { get; set; }
-            public MapPropertyAttribute MapProperty { get; set; }
         }
 
         #endregion

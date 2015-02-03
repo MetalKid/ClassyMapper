@@ -946,7 +946,139 @@ namespace ClassyTest
       
         #endregion
 
+        #region << ClearCacheObjects Tests >>
+
+        [TestMethod]
+        public void ClearCacheObjects()
+        {
+            // Arrange
+            TestEntity input = new TestEntity { A = "1", B = "2" };
+            ClassyMapper.New().Map<TestDto>(input);
+
+            // Act
+            ClassyMapper.ClearCacheObjects();
+
+            // Assert
+            // No exception means pass
+        }
+
+        #endregion
+
         #region << Big Class Test >>
+
+        [TestMethod]
+        public void LoadTest_100000_Reflection()
+        {
+            // Arrange
+            List<BigEntity> entities = new List<BigEntity>();
+            for (var i = 0; i < 100000; i++)
+            {
+                entities.Add(new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = i, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 });
+            }
+
+            // Act
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var dtos = ClassyMapper.New().MapToList<BigDto, BigEntity>(entities);
+            watch.Stop();
+
+            // Assert
+            Assert.AreEqual(entities.Count, dtos.Count);
+            Assert.AreEqual(dtos[0].AA, entities[0].AA, "[0] AA property does not match.");
+            Assert.AreEqual(dtos[10].YZAM, entities[10].YZAM, "[10] YZAM property does not match.");
+            Assert.AreEqual(dtos[100].YZAM, entities[100].YZAM, "[100] YZAM property does not match.");
+            Assert.AreEqual(dtos[1000].YZAM, entities[1000].YZAM, "[1000] YZAM property does not match.");
+            Assert.AreEqual(dtos[10000].YZAM, entities[10000].YZAM, "[10000] YZAM property does not match.");
+            Assert.AreEqual(dtos[99999].YZAM, entities[99999].YZAM, "[99999] YZAM property does not match.");
+            Assert.AreEqual(dtos[500].YZAM, entities[500].YZAM, "[500] YZAM property does not match.");
+            Assert.AreEqual(dtos[5000].YZAM, entities[5000].YZAM, "[5000] YZAM property does not match.");
+            Assert.AreEqual(dtos[50000].YZAM, entities[50000].YZAM, "[50000] YZAM property does not match.");
+        }
+
+        // Takes around 30 seconds
+        //[TestMethod]
+        //public void LoadTest_1000000_Reflection()
+        //{
+        //    // Arrange
+        //    List<BigEntity> entities = new List<BigEntity>();
+        //    for (var i = 0; i < 1000000; i++)
+        //    {
+        //        entities.Add(new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = i, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 });
+        //    }
+
+        //    // Act
+        //    var watch = System.Diagnostics.Stopwatch.StartNew();
+        //    var dtos = ClassyMapper.New().MapToList<BigDto, BigEntity>(entities);
+        //    watch.Stop();
+
+        //    // Assert
+        //    Assert.AreEqual(entities.Count, dtos.Count);
+        //    Assert.AreEqual(dtos[0].AA, entities[0].AA, "[0] AA property does not match.");
+        //    Assert.AreEqual(dtos[10].YZAM, entities[10].YZAM, "[10] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[100].YZAM, entities[100].YZAM, "[100] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[1000].YZAM, entities[1000].YZAM, "[1000] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[10000].YZAM, entities[10000].YZAM, "[10000] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[999999].YZAM, entities[999999].YZAM, "[999999] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[500].YZAM, entities[500].YZAM, "[500] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[5000].YZAM, entities[5000].YZAM, "[5000] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[50000].YZAM, entities[50000].YZAM, "[50000] YZAM property does not match.");
+        //}
+
+        [TestMethod]
+        public void LoadTest_100000_ExpressionTree()
+        {
+            // Arrange
+            List<BigEntity> entities = new List<BigEntity>();
+            for (var i = 0; i < 100000; i++)
+            {
+                entities.Add(new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = i, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 });
+            }
+
+            // Act
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var dtos = ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true }).MapToList<BigDto, BigEntity>(entities);
+            watch.Stop();
+
+            // Assert
+            Assert.AreEqual(entities.Count, dtos.Count);
+            Assert.AreEqual(dtos[0].AA, entities[0].AA, "[0] AA property does not match.");
+            Assert.AreEqual(dtos[10].YZAM, entities[10].YZAM, "[10] YZAM property does not match.");
+            Assert.AreEqual(dtos[100].YZAM, entities[100].YZAM, "[100] YZAM property does not match.");
+            Assert.AreEqual(dtos[1000].YZAM, entities[1000].YZAM, "[1000] YZAM property does not match.");
+            Assert.AreEqual(dtos[10000].YZAM, entities[10000].YZAM, "[10000] YZAM property does not match.");
+            Assert.AreEqual(dtos[99999].YZAM, entities[99999].YZAM, "[99999] YZAM property does not match.");
+            Assert.AreEqual(dtos[500].YZAM, entities[500].YZAM, "[500] YZAM property does not match.");
+            Assert.AreEqual(dtos[5000].YZAM, entities[5000].YZAM, "[5000] YZAM property does not match.");
+            Assert.AreEqual(dtos[50000].YZAM, entities[50000].YZAM, "[50000] YZAM property does not match.");
+        }
+
+        // Takes around 20 seconds
+        //[TestMethod]
+        //public void LoadTest_1000000_ExpressionTree()
+        //{
+        //    // Arrange
+        //    List<BigEntity> entities = new List<BigEntity>();
+        //    for (var i = 0; i < 1000000; i++)
+        //    {
+        //        entities.Add(new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = i, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 });
+        //    }
+
+        //    // Act
+        //    var watch = System.Diagnostics.Stopwatch.StartNew();
+        //    var dtos = ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true }).MapToList<BigDto, BigEntity>(entities);
+        //    watch.Stop();
+
+        //    // Assert
+        //    Assert.AreEqual(entities.Count, dtos.Count);
+        //    Assert.AreEqual(dtos[0].AA, entities[0].AA, "[0] AA property does not match.");
+        //    Assert.AreEqual(dtos[10].YZAM, entities[10].YZAM, "[10] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[100].YZAM, entities[100].YZAM, "[100] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[1000].YZAM, entities[1000].YZAM, "[1000] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[10000].YZAM, entities[10000].YZAM, "[10000] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[999999].YZAM, entities[999999].YZAM, "[999999] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[500].YZAM, entities[500].YZAM, "[500] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[5000].YZAM, entities[5000].YZAM, "[5000] YZAM property does not match.");
+        //    Assert.AreEqual(dtos[50000].YZAM, entities[50000].YZAM, "[50000] YZAM property does not match.");
+        //}
 
         [TestMethod]
         public void MapEntityToDto_LotsOfProperties_AllProperties()
@@ -1163,7 +1295,70 @@ namespace ClassyTest
 
         #endregion
 
+        #region << Basic Mapping Tests >>
+
+        [TestMethod]
+        public void MapEntityToDto_Struct_AllProperties()
+        {
+            // Arrange
+            StructEntity input = new StructEntity { Id = 5 };
+
+            // Act
+            var result = ClassyMapper.New().Map<StructDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.Id, result.Id, "Property 'Id' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_Struct_AllProperties()
+        {
+            // Arrange
+            StructDto input = new StructDto { Id = 55 };
+
+            // Act
+            var result = ClassyMapper.New().Map<StructEntity>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.Id, result.Id, "Property 'Id' does not match.");
+        }
+
+        [TestMethod]
+        public void MapEntityToDto_Struct_AllProperties_ExpressionWay()
+        {
+            // Arrange
+            StructEntity input = new StructEntity { Id = 555 };
+
+            // Act
+            var result = ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true })
+                .Map<StructDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.Id, result.Id, "Property 'Id' does not match.");
+        }
+
+        #endregion
+
         #region << Private Classes >>
+
+        private struct StructEntity
+        {
+
+            public int Id { get; set; }
+
+        }
+
+        [MapAllProperties]
+        private struct StructDto
+        {
+
+            [MapProperty]
+            public int Id { get; set; }
+
+        }
 
         private class NoParameterlessConstructorEntity
         {
@@ -1198,14 +1393,14 @@ namespace ClassyTest
             public ParentEntity Parent { get; set; }
         }
 
-        [MapClass]
+        [MapAllProperties]
         private class ParentDto
         {
             public string Test { get; set; }
             public IList<ChildDto> Children { get; set; }
         }
 
-        [MapClass]
+        [MapAllProperties]
         private class ChildDto
         {
             public string ChildA { get; set; }
@@ -1221,7 +1416,7 @@ namespace ClassyTest
             public string D { get; set; }
         }
 
-        [MapClass]
+        [MapAllProperties]
         private class MapClassDto
         {
             public string A { get; set; }
