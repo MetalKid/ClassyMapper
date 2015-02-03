@@ -9,6 +9,15 @@
         #region << Properties >>
 
         /// <summary>
+        /// Gets or sets whether to use an Expression tree to assign values instead of using Reflection/PropertyInfo
+        /// GetValue/SetValue calls.  If you are mapping a lot of objects/properties, setting this to true should
+        /// speed things up a little.  If you are assigning a small amount, you will be better off setting this
+        /// to false.
+        /// Defaut: false
+        /// </summary>
+        public bool ExpressionTreeGetSetCalls { get; set; }
+
+        /// <summary>
         /// Gets or sets whether From object results in the to object getting created with IsNull set to true. 
         /// Default: false
         /// </summary>

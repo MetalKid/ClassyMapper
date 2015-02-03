@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using Classy.Attributes;
 using Classy.Exceptions;
@@ -18,7 +19,7 @@ namespace Classy
     /// flatten an object hierarcy and restore it later.  All objects being mapped to MUST have a parameterless
     /// constructor.
     /// </summary>
-    public class ClassyMapper
+    public class ClassyMapper : IClassyMapper
     {
 
         #region << Static Variables >>
@@ -33,6 +34,10 @@ namespace Classy
             new Dictionary<PropertyInfo, MapPropertyAttribute>();
         private static readonly IDictionary<Type, MapClassAttribute> _mapClassCache =
             new Dictionary<Type, MapClassAttribute>();
+        private static readonly IDictionary<PropertyInfo, Action<object, object>> _setterMaps =
+            new Dictionary<PropertyInfo, Action<object, object>>();
+        private static readonly IDictionary<PropertyInfo, Func<object, object>> _getterMaps =
+            new Dictionary<PropertyInfo, Func<object, object>>();
 
         // These types are used often, so perform this once
         private readonly static Type _nullableType = typeof(Nullable<>);
@@ -80,17 +85,7 @@ namespace Classy
             foreach (var toProp in toProps)
             {
                 var fromProp = fromProps.SingleOrDefault(a => a.Name == toProp.Name);
-                if (fromProp == null)
-                {
-                    continue;
-                }
-                var setMethod = toProp.GetSetMethod();
-                if (setMethod == null)
-                {
-                    continue;
-                }
-                var getMethod = fromProp.GetGetMethod();
-                if (getMethod == null)
+                if (fromProp == null || !toProp.CanWrite || !fromProp.CanRead)
                 {
                     continue;
                 }
@@ -155,7 +150,7 @@ namespace Classy
             PropertyInfo[] props = GetPropertyInfos(entity.GetType());
             foreach (PropertyInfo prop in props)
             {
-                if (prop.GetSetMethod() == null)
+                if (!prop.CanWrite)
                 {
                     continue;
                 }
@@ -176,8 +171,7 @@ namespace Classy
         /// <param name="defaultStringValue">The default value to use for properties of type string.</param>
         private static void DefaultStringValue(object entity, PropertyInfo prop, string defaultStringValue)
         {
-            var setMethod = prop.GetSetMethod();
-            if (prop.PropertyType == _stringType && setMethod != null)
+            if (prop.PropertyType == _stringType && prop.CanWrite)
             {
                 prop.SetValue(entity, defaultStringValue, null);
             }
@@ -224,7 +218,7 @@ namespace Classy
                 }
 
                 result =
-                    type.GetCustomAttributes(_mapClassAttributeType, true).FirstOrDefault() as
+                    type.GetCustomAttributes(_mapClassAttributeType, false).FirstOrDefault() as
                         MapClassAttribute;
 
                 _mapClassCache.Add(type, result);
@@ -248,7 +242,7 @@ namespace Classy
                 }
 
                 result =
-                    pi.GetCustomAttributes(_mapPropertyAttributeType, true).FirstOrDefault() as
+                    pi.GetCustomAttributes(_mapPropertyAttributeType, false).FirstOrDefault() as
                         MapPropertyAttribute;
 
                 _mapPropertyCache.Add(pi, result);
@@ -262,6 +256,7 @@ namespace Classy
 
         private readonly IDictionary<Tuple<Type, Type>, Delegate> _customMaps;
         private readonly IDictionary<Type, Delegate> _fromObjects;
+        private readonly IDictionary<Tuple<Type, Type>, Delegate> _constructors;
         private readonly IDictionary<object, object> _alreadyMappedEntities;
 
         #endregion
@@ -278,14 +273,15 @@ namespace Classy
         #region << Constructors >>
 
         /// <summary>
-        /// Private constructor that initializes all variables/properties.
+        /// Constructor that initializes all variables/properties.
         /// </summary>
         /// <param name="config">Configuration data on how the objects will be mapped.</param>
-        private ClassyMapper(ClassyMapperConfig config)
+        public ClassyMapper(ClassyMapperConfig config = null)
         {
             Config = config ?? new ClassyMapperConfig();
 
             _customMaps = new Dictionary<Tuple<Type, Type>, Delegate>();
+            _constructors = new Dictionary<Tuple<Type, Type>, Delegate>();
             _fromObjects = new Dictionary<Type, Delegate>();
             _alreadyMappedEntities = new Dictionary<object, object>();
         }
@@ -321,6 +317,19 @@ namespace Classy
         }
 
         /// <summary>
+        /// Registers a method to call when creating a new TTo type object given the TFrom data.
+        /// </summary>
+        /// <typeparam name="TFrom">The type of object being mapped from.</typeparam>
+        /// <typeparam name="TTo">The type of object being created.</typeparam>
+        /// <param name="method">The function to invoke when creating a new TTo from a TFrom mapping.</param>
+        /// <returns>New instance of TTo.</returns>
+        public ClassyMapper RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method)
+        {
+            _constructors.Add(GetCustomMapKey(typeof (TFrom), typeof (TTo)), method);
+            return this;
+        }
+
+        /// <summary>
         /// Fully maps a list of source object of type TFrom to an IList of TTo type.
         /// </summary>
         /// <typeparam name="TFrom">The type of object being mapped from.</typeparam>
@@ -328,7 +337,6 @@ namespace Classy
         /// <param name="fromObjects">The list of objects being mapped from.</param>
         /// <returns>IList of type TTo.</returns>
         public IList<TTo> MapToList<TTo, TFrom>(IEnumerable<TFrom> fromObjects)
-            where TTo : new()
         {
             // Create an instance of the list to return.
             var constructorInfo = _listType
@@ -341,11 +349,12 @@ namespace Classy
             }
 
             IList list = (IList)constructorInfo.Invoke(null);
+            _alreadyMappedEntities.Clear();
 
             // Map each entity and add them to the list.
-            foreach (var item in fromObjects)
+            foreach (var from in fromObjects)
             {
-                list.Add(Map<TTo>(item));
+                list.Add((TTo)PerformMap(typeof(TTo), from));
             }
 
             return list as List<TTo>;
@@ -358,8 +367,8 @@ namespace Classy
         /// <param name="from">The object being mapped from.</param>
         /// <returns></returns>
         public TTo Map<TTo>(object from)
-            where TTo : new()
         {
+            _alreadyMappedEntities.Clear();
             return (TTo)PerformMap(typeof(TTo), from);
         }
 
@@ -371,14 +380,137 @@ namespace Classy
         /// <param name="from">The object being mapped from.</param>
         /// <returns></returns>
         public TTo Map<TTo>(TTo to, object from)
-            where TTo : new()
         {
+            _alreadyMappedEntities.Clear();
             return (TTo)PerformMap(typeof(TTo), to, from);
         }
 
         #endregion
 
-        #region << Helper Methods >>
+        #region << Assign Methods >>
+
+        /// <summary>
+        /// Invokes any custom maps that may exist for the given to/from combination.
+        /// </summary>
+        /// <param name="to">The instance of the object being mapped to.</param>
+        /// <param name="from">The object being mapped from.</param>
+        private void AssignCustomMap(object to, object from)
+        {
+            if (to == null || from == null || _customMaps.Keys.Count == 0)
+            {
+                return;
+            }
+
+            Delegate method;
+            if (!_customMaps.TryGetValue(GetCustomMapKey(from.GetType(), to.GetType()), out method))
+            {
+                return;
+            }
+
+            if (method != null)
+            {
+                method.DynamicInvoke(from, to);
+            }
+        }
+
+        /// <summary>
+        /// Maps the property.
+        /// </summary>
+        /// <param name="mapPropAttr">The MapProperty attribute on the Property, if any.</param>
+        /// <param name="toObject">The instance of the object being mapped to.</param>
+        /// <param name="toProp">The property being mapped to.</param>
+        /// <param name="fromObject">The object being mapped from.</param>
+        /// <param name="fromProp">The property being mapped from.</param>
+        private void AssignValue(
+            MapPropertyAttribute mapPropAttr,
+            object toObject,
+            PropertyInfo toProp,
+            object fromObject,
+            PropertyInfo fromProp)
+        {
+            var value = GetValue(fromObject, fromProp);
+
+            if (AreEqualTypes(toProp, fromProp))
+            {
+                SetValue(toObject, toProp, value);
+            }
+            else if (mapPropAttr is MapPropertyTimestamp)
+            {
+                MapTimestamp(toObject, toProp, value);
+            }
+            else if (toProp.PropertyType == _stringType)
+            {
+                // If target property is a string, just call ToString on whatever source property is
+                SetValue(toObject, toProp, value == null ? null : value.ToString());
+            }
+            else if (IsList(toProp))
+            {
+                MapList(toObject, toProp, value);
+            }
+            else if (IsAssignableEnumTo(toProp, fromProp))
+            {
+                if (Enum.IsDefined(toProp.PropertyType, value))
+                {
+                    SetValue(toObject, toProp, Enum.Parse(toProp.PropertyType, value.ToString(), Config.IgnoreEnumCase));
+                }
+            }
+            else if (IsAssignableEnumFrom(toProp, fromProp))
+            {
+                SetValue(toObject, toProp, value);
+            }
+            else if (IsFromNullableToNonNullable(toProp, fromProp) ||
+                IsAssignableNullableEnumFrom(toProp, fromProp))
+            {
+                // Map nullable source to non-nullable target, if not null
+                if (value != null)
+                {
+                    SetValue(toObject, toProp, value);
+                }
+            }
+            else if (IsAssignableNullableEnumTo(toProp, fromProp))
+            {
+                if (Enum.IsDefined(toProp.PropertyType.GetGenericArguments()[0], value))
+                {
+                    SetValue(
+                        toObject,
+                        toProp,
+                        Enum.Parse(
+                            toProp.PropertyType.GetGenericArguments()[0],
+                            value.ToString(),
+                            Config.IgnoreEnumCase));
+                }
+            }
+            else if (!toProp.PropertyType.IsPrimitive)
+            {
+                // Map class/struct
+                SetValue(toObject, toProp, PerformMap(toProp.PropertyType, value));
+            }
+        }
+
+        #endregion
+
+        #region << Map Methods >>
+
+        /// <summary>
+        /// Returns a new instance of the given toType.
+        /// </summary>
+        /// <param name="toType">The type of object to instantiate.</param>
+        /// <param name="from">The object being mapped from.</param>
+        /// <returns>New instance of the given toType.</returns>
+        private object CreateInstance(Type toType, object from)
+        {
+            if (_constructors.Count == 0 || from == null)
+            {
+                // Call parameterless constructor; Create instance of To object
+                return Activator.CreateInstance(toType);
+            }
+            var key = GetCustomMapKey(from.GetType(), toType);
+
+            Delegate method;
+            return !_constructors.TryGetValue(key, out method) ? 
+                Activator.CreateInstance(toType) : 
+                method.DynamicInvoke(@from);
+        }
 
         /// <summary>
         /// Returns a mapped object of toType from the given from object.
@@ -388,8 +520,7 @@ namespace Classy
         /// <returns>The mapped object of type toType.</returns>
         private object PerformMap(Type toType, object from)
         {
-            // Must call parameterless constructor; Create instance of To object
-            return PerformMap(toType, Activator.CreateInstance(toType), from);
+            return PerformMap(toType, CreateInstance(toType, from), from);
         }
 
         /// <summary>
@@ -407,7 +538,7 @@ namespace Classy
             PropertyInfo[] toInfos = GetPropertyInfos(toType);
             var toMapProperties =
                 toInfos.Select(
-                    a => new PropertyInfoMapProperty {PropertyInfo = a, MapProperty = GetMapPropertyAttribute(a)})
+                    a => new PropertyInfoMapProperty { PropertyInfo = a, MapProperty = GetMapPropertyAttribute(a) })
                     .Where(a => a != null && (a.MapProperty != null || toMapClassAttr != null))
                     .ToList();
 
@@ -451,6 +582,397 @@ namespace Classy
         }
 
         /// <summary>
+        /// Maps any valid properties where the MapProperty is on the From object.
+        /// </summary>
+        /// <param name="toObject">The instance of the object being mapped to.</param>
+        /// <param name="toInfos">The PropertyInfo objects of the To object.</param>
+        /// <param name="fromObject">The instance of the object being mapped from.</param>
+        /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
+        /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
+        private void PerformMapOnFromProperties(
+            object toObject,
+            PropertyInfo[] toInfos,
+            object fromObject,
+            IEnumerable<PropertyInfo> fromInfos,
+            IDictionary<PropertyInfo, bool> propertiesMapped)
+        {
+            var fromMapClassAttr = GetMapClassAttribute(fromObject.GetType());
+
+            var fromMapProperties =
+                fromInfos.Select(
+                    a => new PropertyInfoMapProperty { PropertyInfo = a, MapProperty = GetMapPropertyAttribute(a) })
+                    .Where(a => a != null && (a.MapProperty != null || fromMapClassAttr != null))
+                    .ToList();
+
+            foreach (var fromMap in fromMapProperties)
+            {
+                if (!CanMap(fromMap.MapProperty, toObject))
+                {
+                    continue;
+                }
+                var name = GetName(fromMap.MapProperty, fromMap.PropertyInfo);
+                var fromProp = fromMap.PropertyInfo;
+                if (!fromProp.CanRead)
+                {
+                    continue;
+                }
+                propertiesMapped[fromProp] = false;
+
+                var toProp = toInfos.SingleOrDefault(a => a.Name == name);
+                if (toProp == null || !toProp.CanWrite)
+                {
+                    continue;
+                }
+                propertiesMapped[fromProp] = true;
+
+                AssignValue(fromMap.MapProperty, toObject, toProp, fromObject, fromProp);
+            }
+        }
+
+        /// <summary>
+        /// Maps any valid properties where the MapProperty is on the To object.
+        /// </summary>
+        /// <param name="toObject">The instance of the object being mapped to.</param>
+        /// <param name="fromObject">The instance of the object being mapped from.</param>
+        /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
+        /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
+        /// <param name="toMapProperties">The PropertyInfo and MapPropertyAttribute information.</param>
+        private void PerformMapOnToProperties(
+            object toObject,
+            object fromObject,
+            PropertyInfo[] fromInfos,
+            IDictionary<PropertyInfo, bool> propertiesMapped,
+            IEnumerable<PropertyInfoMapProperty> toMapProperties)
+        {
+            foreach (var toMap in toMapProperties)
+            {
+                if (!CanMap(toMap.MapProperty, fromObject))
+                {
+                    continue;
+                }
+                var toProp = toMap.PropertyInfo;
+                propertiesMapped[toProp] = false;
+                var name = GetName(toMap.MapProperty, toMap.PropertyInfo);
+                var fromProp = fromInfos.SingleOrDefault(a => a.Name == name);
+                if (fromProp == null || !fromProp.CanRead || !toProp.CanWrite)
+                {
+                    continue;
+                }
+                propertiesMapped[toProp] = true;
+                AssignValue(toMap.MapProperty, toObject, toProp, fromObject, fromProp);
+            }
+        }
+
+        /// <summary>
+        /// Maps a Timestamp property.
+        /// </summary>
+        /// <param name="toObject">The instance of the object being mapped to.</param>
+        /// <param name="toProp">The property being mapped to.</param>
+        /// <param name="value">The value of this property on the from object.</param>
+        private void MapTimestamp(object toObject, PropertyInfo toProp, object value)
+        {
+            if (value == null)
+            {
+                return;
+            }
+            var timestamp = value as string;
+            if (timestamp == null)
+            {
+                // Transform from byte[] to string
+                SetValue(toObject, toProp, Convert.ToBase64String((byte[])value));
+            }
+            else
+            {
+                // Transform from string to byte[]
+                SetValue(toObject, toProp, Convert.FromBase64String(timestamp));
+            }
+        }
+
+        /// <summary>
+        /// Maps a sub list of objects that will map each of those children.
+        /// </summary>
+        /// <param name="toObject">The instance of the object being mapped to.</param>
+        /// <param name="toProp">The property being mapped to.</param>
+        /// <param name="value">The value of this property on the from object.</param>
+        private void MapList(object toObject, PropertyInfo toProp, object value)
+        {
+            // Will only map Generic lists
+            IEnumerable valueList = (IEnumerable)value;
+            if (!Config.MapEmptyListFromNullList && valueList == null)
+            {
+                return;
+            }
+
+            // Get an instance of the list or create one if needed
+            // Must use IList in order to call Add
+            IList list = GetValue(toObject, toProp) as IList;
+            if (list == null)
+            {
+                // If the list was not already newed up in constructor, then initialize it
+                var listType = _listType.MakeGenericType(toProp.PropertyType.GetGenericArguments()[0]);
+                if (!toProp.PropertyType.IsAssignableFrom(listType))
+                {
+                    return; // Can't map this type of list
+                }
+                list = Activator.CreateInstance(listType) as IList;
+                SetValue(toObject, toProp, list);
+            }
+            if (valueList == null || list == null)
+            {
+                // Nothing to map
+                return;
+            }
+            foreach (object item in valueList)
+            {
+                var childTo = PerformMap(toProp.PropertyType.GetGenericArguments()[0], item);
+
+                if (childTo != null)
+                {
+                    list.Add(childTo);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Maps the null from object to a defaulted 'to' object with IsNull set to true, if the property exists.
+        /// </summary>
+        /// <param name="toObject">The object being created.</param>
+        /// <param name="toInfos">The properties of the object being created.</param>
+        /// <param name="depth">The current depth of the class hierarchy.</param>
+        private void MapNull(object toObject, IEnumerable<PropertyInfo> toInfos, int depth = 0)
+        {
+            AssignIsNull(toObject);
+            if (depth >= Config.MaxNullDepth)
+            {
+                return;
+            }
+            depth++;
+
+            // Only map nested, non-primitive types of objects in this scenario
+            foreach (
+                PropertyInfo toInfo in
+                    toInfos.Where(
+                        a => a.PropertyType.IsClass && !a.PropertyType.IsPrimitive && a.PropertyType != _stringType))
+            {
+                MapPropertyAttribute attr = GetMapPropertyAttribute(toInfo);
+                if (attr == null)
+                {
+                    continue;
+                }
+                var constructor = toInfo.PropertyType.GetConstructor(Type.EmptyTypes);
+                if (constructor == null) // Must be parameterless constructor
+                {
+                    continue;
+                }
+                var value = constructor.Invoke(null);
+                SetValue(toObject, toInfo, value);
+
+                MapNull(value, GetPropertyInfos(toInfo.PropertyType), depth);
+            }
+        }
+
+        /// <summary>
+        /// If the object implements IIsNullable, sets IsNull to true.
+        /// </summary>
+        /// <param name="to">The instance of the object being mapped to.</param>
+        private void AssignIsNull(object to)
+        {
+            var nullable = to as IIsNullable;
+            if (nullable != null)
+            {
+                nullable.IsNull = true;
+            }
+        }
+
+        #endregion
+
+        #region << Property Info Check Methods >>
+
+        /// <summary>
+        /// Returns whether the From property type can be assigned to the To property type.
+        /// </summary>
+        /// <param name="toProp">The property the value is being set to.</param>
+        /// <param name="fromProp">The property the value is coming from.</param>
+        /// <returns>True if the From property type can be assigned to the To propety type; false otherwise.</returns>
+        private bool AreEqualTypes(PropertyInfo toProp, PropertyInfo fromProp)
+        {
+            return toProp.PropertyType.IsAssignableFrom(fromProp.PropertyType);
+        }
+
+        /// <summary>
+        /// Returns true if the From property is nullable, but the To property is not but are the same base type.
+        /// </summary>
+        /// <param name="toProp">The property the value is being set to.</param>
+        /// <param name="fromProp">The property the value is coming from.</param>
+        /// <returns>
+        /// True if the From property is nullable, but the To property is not but are the same base type; 
+        /// false otherwise.
+        /// </returns>
+        private bool IsFromNullableToNonNullable(PropertyInfo toProp, PropertyInfo fromProp)
+        {
+            return fromProp.PropertyType.IsGenericType && IsNullableType(fromProp) &&
+                   fromProp.PropertyType.GetGenericArguments()[0] == toProp.PropertyType;
+        }
+
+        /// <summary>
+        /// Returns whether the given property info represents a nullable type.
+        /// </summary>
+        /// <param name="prop">The property to inspect.</param>
+        /// <returns>True if the property is of Nullable type; false otherwise.</returns>
+        private bool IsNullableType(PropertyInfo prop)
+        {
+            return _nullableType.MakeGenericType(prop.PropertyType.GetGenericArguments()[0])
+                    .IsAssignableFrom(prop.PropertyType);
+        }
+
+        /// <summary>
+        /// Returns whether the To property is an enum and is assignable from the From property.
+        /// </summary>
+        /// <param name="toProp">The property the value is being set to.</param>
+        /// <param name="fromProp">The property the value is coming from.</param>
+        /// <returns>True if the To property is an enum and has a matching underlying type with the From property.</returns>
+        private bool IsAssignableEnumTo(PropertyInfo toProp, PropertyInfo fromProp)
+        {
+            return toProp.PropertyType.IsEnum &&
+                   (toProp.PropertyType.GetEnumUnderlyingType() == fromProp.PropertyType ||
+                    fromProp.PropertyType == _stringType);
+        }
+
+        /// <summary>
+        /// Returns whether the To property is a nullable enum and is assignable from the From property.
+        /// </summary>
+        /// <param name="toProp">The property the value is being set to.</param>
+        /// <param name="fromProp">The property the value is coming from.</param>
+        /// <returns>
+        /// True if the To property is a nullable enum and has a matching underlying type with the From property;
+        /// false otherwise.
+        /// </returns>
+        private bool IsAssignableNullableEnumTo(PropertyInfo toProp, PropertyInfo fromProp)
+        {
+            var toGenArgs = toProp.PropertyType.GetGenericArguments();
+            return toProp.PropertyType.IsGenericType &&
+                IsNullableType(toProp) &&
+                toGenArgs[0].IsEnum &&
+                (toGenArgs[0].GetEnumUnderlyingType() == fromProp.PropertyType ||
+                    fromProp.PropertyType == _stringType);
+        }
+
+        /// <summary>
+        /// Returns whether the From property is a nullable enum and the To property is assignable to it.
+        /// </summary>
+        /// <param name="toProp">The property the value is being set to.</param>
+        /// <param name="fromProp">The property the value is coming from.</param>
+        /// <returns>
+        /// True if the From proeprty is a nullable enum and the To value can be assigned it; 
+        /// false otherwise.
+        /// </returns>
+        private bool IsAssignableNullableEnumFrom(PropertyInfo toProp, PropertyInfo fromProp)
+        {
+            var fromGenArgs = fromProp.PropertyType.GetGenericArguments();
+            return fromProp.PropertyType.IsGenericType &&
+                IsNullableType(fromProp) &&
+                fromGenArgs[0].IsEnum &&
+                (fromGenArgs[0].GetEnumUnderlyingType() == toProp.PropertyType ||
+                    fromProp.PropertyType == _stringType);
+        }
+
+        /// <summary>
+        /// Returns whether the From property is an enum and the To property is not but are assignable.
+        /// </summary>
+        /// <param name="toProp">The property the value is being set to.</param>
+        /// <param name="fromProp">The property the value is coming from.</param>
+        /// <returns>True if the From property is an Enum but is assignable to the To property.</returns>
+        private bool IsAssignableEnumFrom(PropertyInfo toProp, PropertyInfo fromProp)
+        {
+            return fromProp.PropertyType.IsEnum && fromProp.PropertyType.GetEnumUnderlyingType() == toProp.PropertyType;
+        }
+
+        /// <summary>
+        /// Returns whether the given property info represents a list-type object.
+        /// </summary>
+        /// <param name="prop">The property to inspect.</param>
+        /// <returns>True if the property is of IEnumerable type; false otherwise.</returns>
+        private bool IsList(PropertyInfo prop)
+        {
+            return prop.PropertyType.IsGenericType && _iEnumerableType.IsAssignableFrom(prop.PropertyType);
+        }
+
+        #endregion
+
+        #region << Get/Set Methods >>
+
+        /// <summary>
+        /// Sets the given value on the To object for the given property.
+        /// </summary>
+        /// <param name="toObject">The object to set the value on.</param>
+        /// <param name="propInfo">The property to set the value to.</param>
+        /// <param name="val">The value to set.</param>
+        private void SetValue(object toObject, PropertyInfo propInfo, object val)
+        {
+            if (!Config.ExpressionTreeGetSetCalls)
+            {
+                propInfo.SetValue(toObject, val, null);
+                return;
+            }
+
+            Action<object, object> setter;
+            lock (_setterMaps)
+            {
+                if (!_setterMaps.TryGetValue(propInfo, out setter))
+                {
+                    var target = Expression.Parameter(typeof(object), "obj");
+                    var value = Expression.Parameter(typeof(object), "value");
+                    var body =
+                        Expression.Assign(
+                            Expression.Property(Expression.Convert(target, toObject.GetType()), propInfo),
+                            Expression.Convert(value, propInfo.PropertyType));
+
+                    var lambda = Expression.Lambda<Action<object, object>>(body, target, value);
+                    setter = lambda.Compile();
+                    _setterMaps.Add(propInfo, setter);
+                }
+            }
+            setter(toObject, val);
+        }
+
+        /// <summary>
+        /// Gets the value on the From object for the given property.
+        /// </summary>
+        /// <param name="fromObject">The object to get the value from</param>
+        /// <param name="propInfo">The property to get the value from.</param>
+        /// <returns>The value of the property on the From object.</returns>
+        private object GetValue(object fromObject, PropertyInfo propInfo)
+        {
+            if (!Config.ExpressionTreeGetSetCalls)
+            {
+                return propInfo.GetValue(fromObject, null);
+            }
+
+            Func<object, object> getter;
+            lock (_getterMaps)
+            {
+                if (_getterMaps.TryGetValue(propInfo, out getter))
+                {
+                    return getter(fromObject);
+                }
+                var target = Expression.Parameter(typeof(object), "obj");
+
+                var body =
+                    Expression.Convert(
+                        Expression.Property(Expression.Convert(target, fromObject.GetType()), propInfo),
+                        typeof(object));
+                var lambda = Expression.Lambda<Func<object, object>>(body, target);
+                getter = lambda.Compile();
+                _getterMaps.Add(propInfo, getter);
+            }
+            return getter(fromObject);
+        }
+
+        #endregion
+
+        #region << Helper Methods >>
+
+        /// <summary>
         /// Handles the scenario when a To object is being mapped from a null From object.
         /// </summary>
         /// <param name="toObject">The instance of the object being mapped to.</param>
@@ -473,8 +995,8 @@ namespace Classy
         /// <param name="fromObject">The instance of the object being mapped from.</param>
         /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
         private void CheckForMappingExceptions(
-            object toObject, 
-            object fromObject, 
+            object toObject,
+            object fromObject,
             IEnumerable<KeyValuePair<PropertyInfo, bool>> propertiesMapped)
         {
             if (!Config.ThrowExceptionIfNoMatchingPropertyFound)
@@ -490,88 +1012,6 @@ namespace Classy
                         fromObject.GetType().FullName,
                         toObject.GetType().FullName,
                         string.Join(", ", notMapped.Select(a => a.Key.Name))));
-            }
-        }
-
-        /// <summary>
-        /// Maps any valid properties where the MapProperty is on the From object.
-        /// </summary>
-        /// <param name="toObject">The instance of the object being mapped to.</param>
-        /// <param name="toInfos">The PropertyInfo objects of the To object.</param>
-        /// <param name="fromObject">The instance of the object being mapped from.</param>
-        /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
-        /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
-        private void PerformMapOnFromProperties(
-            object toObject, 
-            PropertyInfo[] toInfos, 
-            object fromObject,
-            IEnumerable<PropertyInfo> fromInfos,
-            IDictionary<PropertyInfo, bool> propertiesMapped)
-        {
-            var fromMapClassAttr = GetMapClassAttribute(fromObject.GetType());
-
-            var fromMapProperties =
-                fromInfos.Select(
-                    a => new PropertyInfoMapProperty {PropertyInfo = a, MapProperty = GetMapPropertyAttribute(a)})
-                    .Where(a => a != null && (a.MapProperty != null || fromMapClassAttr != null))
-                    .ToList();
-
-            foreach (var fromMap in fromMapProperties)
-            {
-                if (!CanMap(fromMap.MapProperty, toObject))
-                {
-                    continue;
-                }
-                var name = GetName(fromMap.MapProperty, fromMap.PropertyInfo);
-                var fromProp = fromMap.PropertyInfo;
-                if (fromProp.GetGetMethod() == null)
-                {
-                    continue;
-                }
-                propertiesMapped[fromProp] = false;
-
-                var toProp = toInfos.SingleOrDefault(a => a.Name == name);
-                if (toProp == null || toProp.GetSetMethod() == null)
-                {
-                    continue;
-                }
-                propertiesMapped[fromProp] = true;
-
-                AssignValue(fromMap.MapProperty, toObject, toProp, fromObject, fromProp);
-            }
-        }
-
-        /// <summary>
-        /// Maps any valid properties where the MapProperty is on the To object.
-        /// </summary>
-        /// <param name="toObject">The instance of the object being mapped to.</param>
-        /// <param name="fromObject">The instance of the object being mapped from.</param>
-        /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
-        /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
-        /// <param name="toMapProperties">The PropertyInfo and MapPropertyAttribute information.</param>
-        private void PerformMapOnToProperties(
-            object toObject, 
-            object fromObject, 
-            PropertyInfo[] fromInfos,
-            IDictionary<PropertyInfo, bool> propertiesMapped, 
-            IEnumerable<PropertyInfoMapProperty> toMapProperties)
-        {
-            foreach (var toMap in toMapProperties)
-            {
-                if (!CanMap(toMap.MapProperty, fromObject))
-                {
-                    continue;
-                }
-                var toProp = toMap.PropertyInfo;
-                propertiesMapped[toProp] = false;
-                var name = GetName(toMap.MapProperty, toMap.PropertyInfo);
-                var fromProp = fromInfos.SingleOrDefault(a => a.Name == name);
-                if (fromProp == null || fromProp.GetGetMethod() == null || toProp.GetSetMethod() == null)
-                {
-                    continue;
-                }
-                propertiesMapped[toProp] = true;
-                AssignValue(toMap.MapProperty, toObject, toProp, fromObject, fromProp);
             }
         }
 
@@ -597,168 +1037,6 @@ namespace Classy
         private Tuple<Type, Type> GetCustomMapKey(Type from, Type to)
         {
             return new Tuple<Type, Type>(from, to);
-        }
-
-        /// <summary>
-        /// Invokes any custom maps that may exist for the given to/from combination.
-        /// </summary>
-        /// <param name="to">The instance of the object being mapped to.</param>
-        /// <param name="from">The object being mapped from.</param>
-        private void AssignCustomMap(object to, object from)
-        {
-            if (to == null || from == null || _customMaps.Keys.Count == 0)
-            {
-                return;
-            }
-
-            Delegate method;
-            if (!_customMaps.TryGetValue(GetCustomMapKey(from.GetType(), to.GetType()), out method))
-            {
-                return;
-            }
-
-            if (method != null)
-            {
-                method.DynamicInvoke(from, to);
-            }
-        }
-
-        /// <summary>
-        /// Maps the property.
-        /// </summary>
-        /// <param name="mapPropAttr">The MapProperty attribute on the Property, if any.</param>
-        /// <param name="toObject">The instance of the object being mapped to.</param>
-        /// <param name="toProp">The property being mapped to.</param>
-        /// <param name="fromObject">The object being mapped from.</param>
-        /// <param name="fromProp">The property being mapped from.</param>
-        private void AssignValue(
-            MapPropertyAttribute mapPropAttr,
-            object toObject,
-            PropertyInfo toProp,
-            object fromObject,
-            PropertyInfo fromProp)
-        {
-            var value = fromProp.GetValue(fromObject, null);
-
-            if (toProp.PropertyType.IsAssignableFrom(fromProp.PropertyType))
-            {
-                toProp.SetValue(toObject, value, null);
-            }
-            else if (mapPropAttr is MapPropertyTimestamp)
-            {
-                MapTimestamp(toObject, toProp, value);
-            }
-            else if (toProp.PropertyType == _stringType)
-            {
-                // If target property is a string, just call ToString on whatever source property is
-                toProp.SetValue(toObject, value == null ? null : value.ToString(), null);
-            }
-            else if (toProp.PropertyType.IsEnum && 
-                (toProp.PropertyType.GetEnumUnderlyingType() == fromProp.PropertyType || 
-                    fromProp.PropertyType == _stringType))
-            {
-                if (Enum.IsDefined(toProp.PropertyType, value))
-                {
-                    toProp.SetValue(
-                        toObject,
-                        Enum.Parse(toProp.PropertyType, value.ToString(), Config.IgnoreEnumCase),
-                        null);
-                }
-            }
-            else if (fromProp.PropertyType.IsEnum && fromProp.PropertyType.GetEnumUnderlyingType() == toProp.PropertyType)
-            {
-                toProp.SetValue(toObject, value, null);
-            }
-            else if (toProp.PropertyType.IsGenericType && _iEnumerableType.IsAssignableFrom(toProp.PropertyType))
-            {
-                MapList(toObject, toProp, value);
-            }
-            else if (fromProp.PropertyType.IsGenericType &&
-                     _nullableType.MakeGenericType(fromProp.PropertyType.GetGenericArguments()[0])
-                         .IsAssignableFrom(fromProp.PropertyType) &&
-                     fromProp.PropertyType.GetGenericArguments()[0] == toProp.PropertyType)
-            {
-                // Map nullable source to non-nullable target, if not null
-                if (value != null)
-                {
-                    toProp.SetValue(toObject, value, null);
-                }
-            }
-            else if (!toProp.PropertyType.IsPrimitive)
-            {
-                // Map class/struct
-                toProp.SetValue(toObject, PerformMap(toProp.PropertyType, value), null);
-            }
-        }
-
-        /// <summary>
-        /// Maps a Timestamp property.
-        /// </summary>
-        /// <param name="toObject">The instance of the object being mapped to.</param>
-        /// <param name="toProp">The property being mapped to.</param>
-        /// <param name="value">The value of this property on the from object.</param>
-        private void MapTimestamp(object toObject, PropertyInfo toProp, object value)
-        {
-            if (value == null)
-            {
-                return;
-            }
-            var timestamp = value as string;
-            if (timestamp == null)
-            {
-                // Transform from byte[] to string
-                toProp.SetValue(toObject, Convert.ToBase64String((byte[])value), null);
-            }
-            else
-            {
-                // Transform from string to byte[]
-                toProp.SetValue(toObject, Convert.FromBase64String(timestamp), null);
-            }
-        }
-
-        /// <summary>
-        /// Maps a sub list of objects that will map each of those children.
-        /// </summary>
-        /// <param name="toObject">The instance of the object being mapped to.</param>
-        /// <param name="toProp">The property being mapped to.</param>
-        /// <param name="value">The value of this property on the from object.</param>
-        private void MapList(object toObject, PropertyInfo toProp, object value)
-        {
-            // Will only map Generic lists
-            IEnumerable valueList = (IEnumerable)value;
-            if (!Config.MapEmptyListFromNullList && valueList == null)
-            {
-                return;
-            }
-
-            // Get an instance of the list or create one if needed
-            // Must use IList in order to call Add
-            IList list = toProp.GetValue(toObject, null) as IList;
-            if (list == null) 
-            {
-                // If the list was not already newed up in constructor, then initialize it
-                var listType = _listType.MakeGenericType(toProp.PropertyType.GetGenericArguments()[0]);
-                if (!toProp.PropertyType.IsAssignableFrom(listType))
-                {
-                    return; // Can't map this type of list
-                }
-                list = Activator.CreateInstance(listType) as IList;
-                toProp.SetValue(toObject, list, null);
-            }
-            if (valueList == null || list == null)
-            {
-                // Nothing to map
-                return;
-            }
-            foreach (object item in valueList)
-            {
-                var childTo = PerformMap(toProp.PropertyType.GetGenericArguments()[0], item);
-
-                if (childTo != null)
-                {
-                    list.Add(childTo);
-                }
-            }
         }
 
         /// <summary>
@@ -797,57 +1075,6 @@ namespace Classy
         private static string GetName(MapPropertyAttribute attr, PropertyInfo pi)
         {
             return attr == null || string.IsNullOrEmpty(attr.PropertyName) ? pi.Name : attr.PropertyName;
-        }
-
-        /// <summary>
-        /// Maps the null from object to a defaulted 'to' object with IsNull set to true, if the property exists.
-        /// </summary>
-        /// <param name="to">The object being created.</param>
-        /// <param name="toInfos">The properties of the object being created.</param>
-        /// <param name="depth">The current depth of the class hierarchy.</param>
-        private void MapNull(object to, IEnumerable<PropertyInfo> toInfos, int depth = 0)
-        {
-            AssignIsNull(to);
-            if (depth >= Config.MaxNullDepth)
-            {
-                return;
-            }
-            depth++;
-
-            // Only map nested, non-primitive types of objects in this scenario
-            foreach (
-                PropertyInfo toInfo in
-                    toInfos.Where(
-                        a => a.PropertyType.IsClass && !a.PropertyType.IsPrimitive && a.PropertyType != _stringType))
-            {
-                MapPropertyAttribute attr = GetMapPropertyAttribute(toInfo);
-                if (attr == null)
-                {
-                    continue;
-                }
-                var constructor = toInfo.PropertyType.GetConstructor(Type.EmptyTypes);
-                if (constructor == null) // Must be parameterless constructor
-                {
-                    continue;
-                }
-                var value = constructor.Invoke(null);
-                toInfo.SetValue(to, value, null);
-
-                MapNull(value, GetPropertyInfos(toInfo.PropertyType), depth);
-            }
-        }
-
-        /// <summary>
-        /// If the object implements IIsNullable, sets IsNull to true.
-        /// </summary>
-        /// <param name="to">The instance of the object being mapped to.</param>
-        private void AssignIsNull(object to)
-        {
-            var nullable = to as IIsNullable;
-            if (nullable != null)
-            {
-                nullable.IsNull = true;
-            }
         }
 
         #endregion

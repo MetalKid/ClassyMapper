@@ -50,6 +50,22 @@ namespace ClassyTest
             Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
         }
 
+        [TestMethod]
+        public void MapEntityToDto_AllProperties_ExpressionWay()
+        {
+            // Arrange
+            TestEntity input = new TestEntity { A = "1", B = "2" };
+
+            // Act
+            var result = ClassyMapper.New(new ClassyMapperConfig {ExpressionTreeGetSetCalls = true})
+                .Map<TestDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+        }
+
         #endregion
 
         #region << Enum Mapping Tests >>
@@ -58,7 +74,7 @@ namespace ClassyTest
         public void MapEntityToDtoWithEnum_AllProperties()
         {
             // Arrange
-            EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304 };
+            EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304, Check = 1 };
 
             // Act
             var result = ClassyMapper.New().Map<EnumDto>(input);
@@ -67,14 +83,30 @@ namespace ClassyTest
             Assert.IsNotNull(result);
             Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
             Assert.AreEqual(TestEnum.MyValue, result.MyTest, "Property 'MyTest' does not match.");
+            Assert.AreEqual(TestEnum.MyValue, result.Check, "Property 'Check' does not match.");
         }
 
+        [TestMethod]
+        public void MapEntityToDtoWithEnum_AllProperties_NewingUpDirectly()
+        {
+            // Arrange
+            EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304 , Check = 2};
+
+            // Act
+            var result = new ClassyMapper().Map<EnumDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
+            Assert.AreEqual(TestEnum.MyValue, result.MyTest, "Property 'MyTest' does not match.");
+            Assert.AreEqual(TestEnum.YourValue, result.Check, "Property 'Check' does not match.");
+        }
 
         [TestMethod]
         public void MapDtoToEntityWithEnum_AllProperties()
         {
             // Arrange
-            EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304 };
+            EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304, Check = TestEnum.YourValue };
 
             // Act
             var result = ClassyMapper.New().Map<EnumEntity>(input);
@@ -83,6 +115,7 @@ namespace ClassyTest
             Assert.IsNotNull(result);
             Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
             Assert.AreEqual(1, result.MyTest, "Property 'MyTest' does not match.");
+            Assert.AreEqual(2, result.Check, "Property 'Check' does not match.");
         }
 
         [TestMethod]
@@ -104,7 +137,7 @@ namespace ClassyTest
         public void MapEntityToDtoWithEnum_AllProperties_StringToEnum()
         {
             // Arrange
-            EnumEntity2 input = new EnumEntity2 { MyTest = "MyValue", TesterId = 9304 };
+            EnumEntity2 input = new EnumEntity2 { MyTest = "MyValue", TesterId = 9304, Check = "MyValue" };
 
             // Act
             var result = ClassyMapper.New().Map<EnumDto>(input);
@@ -113,13 +146,14 @@ namespace ClassyTest
             Assert.IsNotNull(result);
             Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
             Assert.AreEqual(TestEnum.MyValue, result.MyTest, "Property 'MyTest' does not match.");
+            Assert.AreEqual(TestEnum.MyValue, result.Check, "Property 'Check' does not match.");
         }
 
         [TestMethod]
         public void MapEntityToDtoWithEnum_AllProperties_EnumToString()
         {
             // Arrange
-            EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304 };
+            EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304, Check = TestEnum.YourValue };
 
             // Act
             var result = ClassyMapper.New().Map<EnumEntity2>(input);
@@ -128,6 +162,26 @@ namespace ClassyTest
             Assert.IsNotNull(result);
             Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
             Assert.AreEqual("MyValue", result.MyTest, "Property 'MyTest' does not match.");
+            Assert.AreEqual("YourValue", result.Check, "Property 'Check' does not match.");
+        }
+
+        [TestMethod]
+        public void MapEntityToDtoWithEnum_AllProperties_ReuseInstance()
+        {
+            // Arrange
+            EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304 };
+            var mapper = ClassyMapper.New();
+
+            // Act
+            mapper.Map<EnumDto>(input);
+            input.MyTest = 2;
+            input.TesterId = 3;
+            var result = mapper.Map<EnumDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.TesterId, result.TesterId, "Property 'TesterId' does not match.");
+            Assert.AreEqual(TestEnum.YourValue, result.MyTest, "Property 'MyTest' does not match.");
         }
 
         #endregion
@@ -903,8 +957,11 @@ namespace ClassyTest
 
             // Act
             var result = ClassyMapper.New().Map<BigDto>(input);
-           // for (int i = 0; i < 1000; i++)
-           //     result = ClassyMapper.New().Map<BigDto>(input);
+            //var watch = System.Diagnostics.Stopwatch.StartNew();
+            //for (int i = 0; i < 100000; i++)
+            //    result = ClassyMapper.New().Map<BigDto>(input);
+            //watch.Stop();
+            //var t = watch.ElapsedMilliseconds;
 
             // Assert
             Assert.IsNotNull(result);
@@ -975,7 +1032,7 @@ namespace ClassyTest
                     .Map<TestDto>(input);
 
             // Assert
-            // See expected exception
+            // See ExpectedException attribute
         }
 
         [TestMethod]
@@ -991,7 +1048,7 @@ namespace ClassyTest
                     .Map<TestEntity2>(input);
 
             // Assert
-            // See expected exception
+            // See ExpectedException attribute
         }
 
         #endregion
@@ -1038,7 +1095,96 @@ namespace ClassyTest
 
         #endregion
 
+        #region << No Parameterless Constructor Tests >>
+
+        [TestMethod]
+        [ExpectedException(typeof(MissingMethodException))]
+        public void MapEntityToDto_NoParameterlessConstructor_AllProperties_NoConstructor()
+        {
+            // Arrange
+            NoParameterlessConstructorEntity input = new NoParameterlessConstructorEntity("1");
+
+            // Act
+            var result = ClassyMapper.New().Map<NoParameterlessConstructorDto>(input);
+
+            // Assert
+            // See ExpectedException attribute
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(MissingMethodException))]
+        public void MapDtoToEntity_NoParameterlessConstructor_AllProperties_NoConstructor()
+        {
+            // Arrange
+            NoParameterlessConstructorDto input = new NoParameterlessConstructorDto("1");
+            
+            // Act
+            var result = ClassyMapper.New().Map<NoParameterlessConstructorEntity>(input);
+
+            // Assert
+            // See ExpectedException attribute
+        }
+
+        [TestMethod]
+        public void MapEntityToDto_NoParameterlessConstructor_AllProperties_ConstructorRegistered()
+        {
+            // Arrange
+            NoParameterlessConstructorEntity input = new NoParameterlessConstructorEntity("1");
+
+            // Act
+            var result =
+                ClassyMapper.New()
+                    .RegisterConstructor<NoParameterlessConstructorEntity, NoParameterlessConstructorDto>(
+                        from => new NoParameterlessConstructorDto("2"))
+                    .Map<NoParameterlessConstructorDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_NoParameterlessConstructor_AllProperties_ConstructorRegistered()
+        {
+            // Arrange
+            NoParameterlessConstructorDto input = new NoParameterlessConstructorDto("1");
+
+            // Act
+            var result =
+                ClassyMapper.New()
+                    .RegisterConstructor<NoParameterlessConstructorDto, NoParameterlessConstructorEntity>(
+                        from => new NoParameterlessConstructorEntity("2"))
+                    .Map<NoParameterlessConstructorEntity>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+        }
+
+        #endregion
+
         #region << Private Classes >>
+
+        private class NoParameterlessConstructorEntity
+        {
+            public string A { get; set; }
+
+            public NoParameterlessConstructorEntity(string a)
+            {
+                A = a;
+            }
+        }
+
+        private class NoParameterlessConstructorDto
+        {
+            [MapProperty]
+            public string A { get; set; }
+
+            public NoParameterlessConstructorDto(string a)
+            {
+                A = a;
+            }
+        }
 
         private class ParentEntity
         {
@@ -1373,7 +1519,7 @@ namespace ClassyTest
 
             public long TesterId { get; set; }
             public int MyTest { get; set; }
-
+            public int Check { get; set; }
         }
 
         private class EnumEntity2
@@ -1381,6 +1527,7 @@ namespace ClassyTest
 
             public long TesterId { get; set; }
             public string MyTest { get; set; }
+            public string Check { get; set; }
 
         }
         private class EnumDto
@@ -1392,6 +1539,8 @@ namespace ClassyTest
             [MapProperty]
             public TestEnum MyTest { get; set; }
 
+            [MapProperty]
+            public TestEnum? Check { get; set; }
         }
 
 
