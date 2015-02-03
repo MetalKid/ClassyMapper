@@ -52,10 +52,10 @@ var entity = ClassyMapper.New().Map<SomeEntity>(dto);
 
 Full Class Mapping
 --------------------------------
-Sometimes, you may want to map all the properties.  If you have 100 properties to map, adding [MapProperty] could get tedious.  Thus, you can attribute the class with [MapClass] and ClassyMapper will try to map all the properties based upon their given PropertyName.  You can still add [MapProperty] if you need to change a few names and they will be included.
+Sometimes, you may want to map all the properties.  If you have 100 properties to map, adding [MapProperty] could get tedious.  Thus, you can attribute the class with [MapAllProperties] and ClassyMapper will try to map all the properties based upon their given PropertyName.  You can still add [MapProperty] if you need to change a few names and they will be included.
 
 ```csharp
-[MapClass]
+[MapAllProperties]
 public class SomeDto
 {
     public string A { get; set; }
@@ -115,7 +115,7 @@ public class SomeChildEntity
     public string C { get; set; }
 }
 
-[MapClass]
+[MapAllProperties]
 public class SomeDto
 {
     public string A { get; set; }
@@ -221,7 +221,7 @@ public class SomeDto
     [MapProperty("Child")]
     public AnotherDto SomeOtherName { get; set; }
 }
-[MapClass]
+[MapAllProperties]
 public class AnotherDto
 {
     public long Id { get; set; }
@@ -270,13 +270,13 @@ public class AnotherEntity
    public string Name { get; set; }
 }
 
-[MapClass]
+[MapAllProperties]
 public class SomeDto
 {
     public string A { get; set; }
     public IList<AnotherDto> Children { get; set; }
 }
-[MapClass]
+[MapAllProperties]
 public class AnotherDto
 {
     public long Id { get; set; }
@@ -302,14 +302,14 @@ private class ChildEntity
     public ParentEntity Parent { get; set; }
 }
 
-[MapClass]
+[MapAllProperties]
 private class ParentDto
 {
     public string Test { get; set; }
     public IList<ChildDto> Children { get; set; }
 }
 
-[MapClass]
+[MapAllProperties]
 private class ChildDto
 {
     public string ChildA { get; set; }
@@ -375,9 +375,19 @@ One interface, IIsNullable, is included with ClassyMapper.  Sometimes, when you 
 
 # Helper Methods
 
+ClearCacheObjects
+--------------------------------
+Every time ClassyMapper maps objects, it stores PropertyInfo and attribute information in a static ConcurrentDictionary.  If you want to clear this cache for some reason, you can now do so like this:
+
+```csharp
+ClassyMapper.ClearCacheObjects();
+```
+
+However, if you are mapping a lot, I wouldn't recommend doing this too often or it will hurt performance.
+
 CopyValues
 --------------------------------
-If you want to copy all matching properties from one class to another specifically and without using the MapProperty/MapClass attributes, you can use the CopyValues static method on ClassyMapper.  However, it will only copy the values if the names match and the types are assignable to each other.  Otherwise, nothing gets mapped.  Also, the reference will be directly copied, including lists.  Just a heads up. [Let me know if you use this method and would like the choice as to whether the reference is used or we do a "Map".]  The classes do not have to be of the same type.
+If you want to copy all matching properties from one class to another specifically and without using the MapProperty/MapAllProperties attributes, you can use the CopyValues static method on ClassyMapper.  However, it will only copy the values if the names match and the types are assignable to each other.  Otherwise, nothing gets mapped.  Also, the reference will be directly copied, including lists.  Just a heads up. [Let me know if you use this method and would like the choice as to whether the reference is used or we do a "Map".]  The classes do not have to be of the same type.
 
 ```csharp
 public class SomeDto
