@@ -5,6 +5,10 @@ C# Property Mapper that utilizes attributes in order to perform the mapping.
 While I personally love auto mappers, I don't like being forced to configure one type to another.  In the end, we are just mapping one set of properties to another set of properties.  All I care about is that the names match (or we can tell it what name to look for) and the types are assignable.
 ClassyMapper will do just that!
 
+On NuGet at https://www.nuget.org/packages/ClassyMapper/
+or
+Install-Package ClassyMapper
+
 Basic Usage
 --------------------------------
 ```csharp
