@@ -66,7 +66,7 @@ public class SomeDto
 
 The call is the same as in the basic version.
 
-[New] You can pass in the MapAllPropertiesTypeEnum.  All means you want everything mapped.  TopLevelOnly means only the properties defined in the class this attribute is in (ignores inherited properties).  BaseTypeOnly will map all the inherited properties only, but you can still specify [MapProperty] on the current level.  You also have the option of passing in the specific BaseTypes to map.  Leaving this null means all of them.  If one of the base types is left out, it will be skipped in its entirety unless that base type already had [MapProperties] defined on it.  a MapProperty attribute will always trump the MapAllProperties attribute.
+[New] You can pass in the MapAllPropertiesTypeEnum.  All means you want everything mapped.  TopLevelOnly means only the properties defined in the class this attribute is in (ignores inherited properties).  BaseTypeOnly will map all the inherited properties only, but you can still specify [MapProperty] on the current level.  You also have the option of passing in the specific BaseTypes to map.  Leaving this null means all of them.  If one of the base types is left out, it will be skipped in its entirety unless that base type already had [MapProperties] defined on it.  A MapProperty attribute will always trump the MapAllProperties attribute.
 
 [New] No Attributes
 --------------------------------
