@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using Classy;
 using Classy.Attributes;
+using Classy.Enums;
 using Classy.Exceptions;
 using Classy.Interfaces;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -967,19 +969,60 @@ namespace ClassyTest
         #region << Big Class Test >>
 
         [TestMethod]
+        public void LoadTest_1000_Reflection()
+        {
+            // Arrange
+            List<BigEntity> entities = new List<BigEntity>();
+            for (var i = 0; i < 1000; i++)
+            {
+                entities.Add(
+                    new BigEntity
+                    {
+                        A = "1",
+                        AA = "2",
+                        YZAK = true,
+                        YZAN = 1,
+                        YZAM = i,
+                        YZAL = 3,
+                        YZAJ = DateTime.UtcNow,
+                        YZAI = 8
+                    });
+            }
+
+            // Act
+            var dtos = ClassyMapper.New().MapToList<BigDto, BigEntity>(entities);
+
+            // Assert
+            Assert.AreEqual(entities.Count, dtos.Count);
+            Assert.AreEqual(dtos[0].AA, entities[0].AA, "[0] AA property does not match.");
+            Assert.AreEqual(dtos[10].YZAM, entities[10].YZAM, "[10] YZAM property does not match.");
+            Assert.AreEqual(dtos[100].YZAM, entities[100].YZAM, "[100] YZAM property does not match.");
+            Assert.AreEqual(dtos[499].YZAM, entities[499].YZAM, "[499] YZAM property does not match.");
+        }
+
+        [TestMethod]
         public void LoadTest_100000_Reflection()
         {
             // Arrange
             List<BigEntity> entities = new List<BigEntity>();
             for (var i = 0; i < 100000; i++)
             {
-                entities.Add(new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = i, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 });
+                entities.Add(
+                    new BigEntity
+                    {
+                        A = "1",
+                        AA = "2",
+                        YZAK = true,
+                        YZAN = 1,
+                        YZAM = i,
+                        YZAL = 3,
+                        YZAJ = DateTime.UtcNow,
+                        YZAI = 8
+                    });
             }
 
             // Act
-            var watch = System.Diagnostics.Stopwatch.StartNew();
             var dtos = ClassyMapper.New().MapToList<BigDto, BigEntity>(entities);
-            watch.Stop();
 
             // Assert
             Assert.AreEqual(entities.Count, dtos.Count);
@@ -1024,19 +1067,62 @@ namespace ClassyTest
         //}
 
         [TestMethod]
+        public void LoadTest_1000_ExpressionTree()
+        {
+            // Arrange
+            List<BigEntity> entities = new List<BigEntity>();
+            for (var i = 0; i < 1000; i++)
+            {
+                entities.Add(
+                    new BigEntity
+                    {
+                        A = "1",
+                        AA = "2",
+                        YZAK = true,
+                        YZAN = 1,
+                        YZAM = i,
+                        YZAL = 3,
+                        YZAJ = DateTime.UtcNow,
+                        YZAI = 8
+                    });
+            }
+
+            // Act
+            var dtos =
+                ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true })
+                    .MapToList<BigEntity2, BigEntity>(entities);
+
+            // Assert
+            Assert.AreEqual(entities.Count, dtos.Count);
+            Assert.AreEqual(dtos[0].AA, entities[0].AA, "[0] AA property does not match.");
+            Assert.AreEqual(dtos[10].YZAM, entities[10].YZAM, "[10] YZAM property does not match.");
+            Assert.AreEqual(dtos[100].YZAM, entities[100].YZAM, "[100] YZAM property does not match.");
+        }
+        [TestMethod]
         public void LoadTest_100000_ExpressionTree()
         {
             // Arrange
             List<BigEntity> entities = new List<BigEntity>();
             for (var i = 0; i < 100000; i++)
             {
-                entities.Add(new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = i, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 });
+                entities.Add(
+                    new BigEntity
+                    {
+                        A = "1",
+                        AA = "2",
+                        YZAK = true,
+                        YZAN = 1,
+                        YZAM = i,
+                        YZAL = 3,
+                        YZAJ = DateTime.UtcNow,
+                        YZAI = 8
+                    });
             }
 
             // Act
-            var watch = System.Diagnostics.Stopwatch.StartNew();
-            var dtos = ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true }).MapToList<BigDto, BigEntity>(entities);
-            watch.Stop();
+            var dtos =
+                ClassyMapper.New(new ClassyMapperConfig {ExpressionTreeGetSetCalls = true})
+                    .MapToList<BigEntity2, BigEntity>(entities);
 
             // Assert
             Assert.AreEqual(entities.Count, dtos.Count);
@@ -1051,7 +1137,7 @@ namespace ClassyTest
             Assert.AreEqual(dtos[50000].YZAM, entities[50000].YZAM, "[50000] YZAM property does not match.");
         }
 
-        // Takes around 20 seconds
+        //// Takes around 20 seconds
         //[TestMethod]
         //public void LoadTest_1000000_ExpressionTree()
         //{
@@ -1295,7 +1381,7 @@ namespace ClassyTest
 
         #endregion
 
-        #region << Basic Mapping Tests >>
+        #region << Struct Tests >>
 
         [TestMethod]
         public void MapEntityToDto_Struct_AllProperties()
@@ -1342,7 +1428,158 @@ namespace ClassyTest
 
         #endregion
 
+        #region << Ihnerit Test >>
+
+        [TestMethod]
+        public void MapEntityToDto_Inherit_AllProperties()
+        {
+            // Arrange
+            InheritTestEntity input = new InheritTestEntity { A = "1", B = "2", C = "3"};
+
+            // Act
+            var result = ClassyMapper.New().Map<InheritTestDto2>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_Inherit_AllProperties()
+        {
+            // Arrange
+            InheritTestDto2 input = new InheritTestDto2 { A = "1", B = "2", C = "3" };
+
+            // Act
+            var result = ClassyMapper.New().Map<InheritTestEntity>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
+        }
+        
+        [TestMethod]
+        public void MapEntityToDto_InheritAll_AllProperties()
+        {
+            // Arrange
+            InheritTestEntity input = new InheritTestEntity { A = "1", B = "2", C = "3"};
+
+            // Act
+            var result = ClassyMapper.New().Map<InheritTestDtoAll2>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_InheritAll_AllProperties()
+        {
+            // Arrange
+            InheritTestDtoAll2 input = new InheritTestDtoAll2 { A = "1", B = "2", C = "3" };
+
+            // Act
+            var result = ClassyMapper.New().Map<InheritTestEntity>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+            Assert.AreEqual(input.C, result.C, "Property 'C' does not match.");
+        }
+
+        #endregion
+
+        #region << No Attributes Test >>
+
+        [TestMethod]
+        public void MapEntityToDto_NoAttributes_AllProperties()
+        {
+            // Arrange
+            SomeEntity input = new SomeEntity { A = "1", B = "2" };
+
+            // Act
+            var result = ClassyMapper.New().Map<SomeDto>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_NoAttributes_AllProperties()
+        {
+            // Arrange
+            SomeDto input = new SomeDto { A = "1", B = "2" };
+
+            // Act
+            var result = ClassyMapper.New().Map<SomeEntity>(input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(input.A, result.A, "Property 'A' does not match.");
+            Assert.AreEqual(input.B, result.B, "Property 'B' does not match.");
+        }
+
+        #endregion
+
         #region << Private Classes >>
+
+        private class SomeEntity
+        {
+            public string A { get; set; }
+            public string B { get; set; }
+        }
+
+        private class SomeDto
+        {
+            public string A { get; set; }
+            public string B { get; set; }
+        }
+
+        private class InheritTestEntity
+        {
+            public string A { get; set; }
+            public string B { get; set; }
+            public string C { get; set; }
+        }
+
+        private class InheritTestDto
+        {
+            [MapProperty]
+            public string A { get; set; }
+            [MapProperty]
+            public string B { get; set; }
+        }
+
+        private class InheritTestDto2 : InheritTestDto
+        {
+            [MapProperty]
+            public string C { get; set; }
+        }
+
+        [MapAllProperties]
+        private class InheritTestDtoAll
+        {
+            [MapProperty]
+            public string A { get; set; }
+            public string B { get; set; }
+        }
+
+        [MapAllProperties(MapAllPropertiesTypeEnum.BaseTypeOnly, typeof(InheritTestDtoAll))]
+        private class InheritTestDtoAll2 : InheritTestDtoAll
+        {
+            [MapProperty]
+            public string C { get; set; }
+        }
+
 
         private struct StructEntity
         {
@@ -1423,6 +1660,69 @@ namespace ClassyTest
             public string B { get; set; }
             public string C { get; set; }
             public string D { get; set; }
+        }
+        private class BigEntity2
+        {
+            public string A { get; set; }
+            public string AA { get; set; }
+            public string AB { get; set; }
+            public string AC { get; set; }
+            public string AD { get; set; }
+            public string AE { get; set; }
+            public string AF { get; set; }
+            public string AG { get; set; }
+            public string AH { get; set; }
+            public string AI { get; set; }
+            public string AJ { get; set; }
+            public string AK { get; set; }
+            public string AL { get; set; }
+            public string AM { get; set; }
+            public string AN { get; set; }
+            public string ZA { get; set; }
+            public string ZAA { get; set; }
+            public string ZAB { get; set; }
+            public string ZAC { get; set; }
+            public string ZAD { get; set; }
+            public string ZAE { get; set; }
+            public string ZAF { get; set; }
+            public string ZAG { get; set; }
+            public string ZAH { get; set; }
+            public string ZAI { get; set; }
+            public string ZAJ { get; set; }
+            public string ZAK { get; set; }
+            public string ZAL { get; set; }
+            public string ZAM { get; set; }
+            public string ZAN { get; set; }
+            public string YA { get; set; }
+            public string YAA { get; set; }
+            public string YAB { get; set; }
+            public string YAC { get; set; }
+            public string YAD { get; set; }
+            public string YAE { get; set; }
+            public string YAF { get; set; }
+            public string YAG { get; set; }
+            public string YAH { get; set; }
+            public string YAI { get; set; }
+            public string YAJ { get; set; }
+            public string YAK { get; set; }
+            public string YAL { get; set; }
+            public string YAM { get; set; }
+            public string YAN { get; set; }
+            public string YZA { get; set; }
+            public string YZAA { get; set; }
+            public string YZAB { get; set; }
+            public string YZAC { get; set; }
+            public string YZAD { get; set; }
+            public string YZAE { get; set; }
+            public string YZAF { get; set; }
+            public string YZAG { get; set; }
+            public string YZAH { get; set; }
+            public long? YZAI { get; set; }
+            public DateTime YZAJ { get; set; }
+            public bool YZAK { get; set; }
+            public long YZAL { get; set; }
+            public int YZAM { get; set; }
+            public byte YZAN { get; set; }
         }
 
         private class BigEntity

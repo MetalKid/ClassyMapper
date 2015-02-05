@@ -9,6 +9,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using Classy.Attributes;
+using Classy.Enums;
 using Classy.Exceptions;
 using Classy.Interfaces;
 
@@ -33,6 +34,8 @@ namespace Classy
             new ConcurrentDictionary<PropertyInfo, MapPropertyAttribute>();
         private static readonly ConcurrentDictionary<Type, MapAllPropertiesAttribute> _mapAllPropertiesCache =
             new ConcurrentDictionary<Type, MapAllPropertiesAttribute>();
+        private static readonly ConcurrentDictionary<Type, bool> _typeHasAtLeastOneMappingAttribute =
+            new ConcurrentDictionary<Type, bool>();
         private static readonly ConcurrentDictionary<PropertyInfo, Action<object, object>> _setterMaps =
             new ConcurrentDictionary<PropertyInfo, Action<object, object>>();
         private static readonly ConcurrentDictionary<PropertyInfo, Func<object, object>> _getterMaps =
@@ -258,6 +261,7 @@ namespace Classy
         private readonly IDictionary<Type, Delegate> _fromObjects;
         private readonly IDictionary<Tuple<Type, Type>, Delegate> _constructors;
         private readonly IDictionary<object, object> _alreadyMappedEntities;
+        private bool _inProgress;
 
         #endregion
 
@@ -338,12 +342,13 @@ namespace Classy
         /// <returns>IList of type TTo.</returns>
         public IList<TTo> MapToList<TTo, TFrom>(IEnumerable<TFrom> fromObjects)
         {
+            CheckForInProgress();
+            _inProgress = true;
             _alreadyMappedEntities.Clear();
-
-            ConcurrentDictionary<int, TTo> result = new ConcurrentDictionary<int, TTo>();
+            IDictionary<int, TTo> result = new Dictionary<int, TTo>();
             List<Task> tasks = new List<Task>();
             int i = 0;
-            foreach(var from in fromObjects)
+            foreach (var from in fromObjects)
             {
                 var fromInner = from;
                 int currentIndex = i;
@@ -351,13 +356,18 @@ namespace Classy
                     Task.Factory.StartNew(
                         () =>
                         {
-                            var item = (TTo)PerformMap(typeof(TTo), fromInner);
-                            result.AddOrUpdate(currentIndex, item, (x, y) => item);
+                            var item = (TTo) PerformMap(typeof (TTo), fromInner);
+                            lock (result) // All writes, so lock is faster than ConcurrentDictionary
+                            {
+                                result.Add(currentIndex, item);
+                            }
                         }));
                 i++;
             }
             Task.WaitAll(tasks.ToArray());
-            return result.Select(a => a.Value).ToList();
+            _inProgress = false;
+
+            return result.OrderBy(a => a.Key).Select(a => a.Value).ToList();
         }
 
         /// <summary>
@@ -368,8 +378,12 @@ namespace Classy
         /// <returns></returns>
         public TTo Map<TTo>(object from)
         {
+            CheckForInProgress();
+            _inProgress = true;
             _alreadyMappedEntities.Clear();
-            return (TTo)PerformMap(typeof(TTo), from);
+            var result = (TTo) PerformMap(typeof (TTo), from);
+            _inProgress = false;
+            return result;
         }
 
         /// <summary>
@@ -381,8 +395,12 @@ namespace Classy
         /// <returns></returns>
         public TTo Map<TTo>(TTo to, object from)
         {
+            CheckForInProgress();
+            _inProgress = true;
             _alreadyMappedEntities.Clear();
-            return (TTo)PerformMap(typeof(TTo), to, from);
+            var result = (TTo) PerformMap(typeof (TTo), to, from);
+            _inProgress = false;
+            return result;
         }
 
         #endregion
@@ -536,7 +554,7 @@ namespace Classy
             var toMapAllPropertiesAttr = GetMapAllPropertiesAttribute(toType);
 
             PropertyInfo[] toInfos = GetPropertyInfos(toType);
-      
+
             object[] fromObjects = GetFromObjects(from);
 
             if (fromObjects.All(a => a == null))
@@ -544,21 +562,22 @@ namespace Classy
                 return HandleNullFromObject(toObject, toInfos);
             }
 
-            lock (_alreadyMappedEntities)
+            lock (_alreadyMappedEntities) // Mostly writes, so lock is faster than ConcurrentDictionary
             {
-                if (_alreadyMappedEntities.ContainsKey(from))
+                object checkIfExistToObject;
+                if (_alreadyMappedEntities.TryGetValue(from, out checkIfExistToObject))
                 {
                     // This from object was already mapped, so return its corresponding to object
-                    return _alreadyMappedEntities[from];
+                    return checkIfExistToObject;
                 }
 
                 // Used to prevent infinite loops when mapping children
-                if (from != null && !_alreadyMappedEntities.ContainsKey(from))
+                if (from != null)
                 {
                     _alreadyMappedEntities.Add(from, toObject);
                 }
             }
-
+            bool checkForToMappings = HasAtLeastOneMappingAttribute(toType, toMapAllPropertiesAttr, toInfos);
             IDictionary<PropertyInfo, bool> propertiesMapped = new Dictionary<PropertyInfo, bool>();
             foreach (var fromObject in fromObjects)
             {
@@ -568,8 +587,33 @@ namespace Classy
                 {
                     continue;
                 }
-                PerformMapOnFromProperties(toObject, toInfos, fromObject, fromInfos, propertiesMapped);
-                PerformMapOnToProperties(toObject, fromObject, toMapAllPropertiesAttr, fromInfos, toInfos, propertiesMapped);
+                var fromMapAllPropertiesAttr = GetMapAllPropertiesAttribute(fromObject.GetType());
+                bool checkForFromMappings = checkForToMappings || HasAtLeastOneMappingAttribute(
+                    fromObject.GetType(),
+                    fromMapAllPropertiesAttr,
+                    fromInfos);
+
+                if (checkForFromMappings)
+                {
+                    PerformMapOnFromProperties(
+                        toObject,
+                        toInfos,
+                        fromObject,
+                        fromMapAllPropertiesAttr,
+                        fromInfos,
+                        propertiesMapped);
+                }
+                if (checkForToMappings || !checkForFromMappings)
+                {
+                    PerformMapOnToProperties(
+                        toObject,
+                        fromObject,
+                        toMapAllPropertiesAttr,
+                        fromInfos,
+                        toInfos,
+                        propertiesMapped,
+                        checkForToMappings);
+                }
                 CheckForMappingExceptions(toObject, fromObject, propertiesMapped);
                 AssignCustomMap(toObject, fromObject);
             }
@@ -577,10 +621,34 @@ namespace Classy
         }
 
         /// <summary>
+        /// Returns whether a Property Info has at least one MapProperty or MapAllProperties attribute.
+        /// </summary>
+        /// <param name="type">The Type to check.</param>
+        /// <param name="allAttr">The MapAllProprties attribute on the class, if it exists.</param>
+        /// <param name="props">The PropertyInfo objects for the type.</param>
+        /// <returns>True if at least one mapping attriubte exists; false otherwise.</returns>
+        private bool HasAtLeastOneMappingAttribute(Type type, MapAllPropertiesAttribute allAttr, IEnumerable<PropertyInfo> props)
+        {
+            bool result;
+            if (_typeHasAtLeastOneMappingAttribute.TryGetValue(type, out result))
+            {
+                return result;
+            }
+            result = allAttr != null;
+            if (!result)
+            {
+                result = props.Any(a => GetMapPropertyAttribute(a) != null);
+            }
+            _typeHasAtLeastOneMappingAttribute.TryAdd(type, result);
+            return result;
+        }
+
+        /// <summary>
         /// Maps any valid properties where the MapProperty is on the From object.
         /// </summary>
         /// <param name="toObject">The instance of the object being mapped to.</param>
         /// <param name="toInfos">The PropertyInfo objects of the To object.</param>
+        /// <param name="fromMapAllPropertiesAttr">The MapAllPropertiesAttribute the From object has, if any.</param>
         /// <param name="fromObject">The instance of the object being mapped from.</param>
         /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
         /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
@@ -588,16 +656,15 @@ namespace Classy
             object toObject,
             PropertyInfo[] toInfos,
             object fromObject,
+            MapAllPropertiesAttribute fromMapAllPropertiesAttr,
             IEnumerable<PropertyInfo> fromInfos,
             IDictionary<PropertyInfo, bool> propertiesMapped)
         {
-            var fromMapAllPropertiesAttr = GetMapAllPropertiesAttribute(fromObject.GetType());
-
             foreach (var fromProp in fromInfos)
             {
                 var mapProperty = GetMapPropertyAttribute(fromProp);
                 if ((mapProperty == null && fromMapAllPropertiesAttr == null) ||
-                    !CanMap(mapProperty, toObject))
+                    !CanMap(mapProperty, fromMapAllPropertiesAttr, toObject, fromProp))
                 {
                     continue;
                 }
@@ -628,22 +695,30 @@ namespace Classy
         /// <param name="fromInfos">The PropertyInfo objects of the From object.</param>
         /// <param name="toInfos">The PropertyInfo objects of the To object.</param>
         /// <param name="propertiesMapped">The dictionary holding which PropertyInfos got mapped.</param>
+        /// <param name="hasAtLeastOneMappingAttributes">
+        /// True if either the To or From object has at least one mapping attribute.
+        /// </param>
         private void PerformMapOnToProperties(
             object toObject,
             object fromObject,
             MapAllPropertiesAttribute toMapAllPropertiesAttr,
             PropertyInfo[] fromInfos,
             IEnumerable<PropertyInfo> toInfos,
-            IDictionary<PropertyInfo, bool> propertiesMapped)
+            IDictionary<PropertyInfo, bool> propertiesMapped,
+            bool hasAtLeastOneMappingAttributes)
         {
             foreach (var toProp in toInfos)
             {
                 var mapProperty = GetMapPropertyAttribute(toProp);
-                if ((mapProperty == null && toMapAllPropertiesAttr == null) || 
-                    !CanMap(mapProperty, fromObject))
+                if (hasAtLeastOneMappingAttributes)
                 {
-                    continue;
+                    if ((mapProperty == null && toMapAllPropertiesAttr == null) ||
+                        !CanMap(mapProperty, toMapAllPropertiesAttr, fromObject, toProp))
+                    {
+                        continue;
+                    }
                 }
+
                 propertiesMapped[toProp] = false;
                 var name = GetName(mapProperty, toProp);
                 var fromProp = fromInfos.FirstOrDefault(a => a.Name == name);
@@ -716,7 +791,7 @@ namespace Classy
                 return;
             }
 
-            ConcurrentDictionary<int, object> result = new ConcurrentDictionary<int, object>();
+            IDictionary<int, object> result = new Dictionary<int, object>();
             List<Task> tasks = new List<Task>();
             int i = 0;
             foreach (var item in valueList)
@@ -730,13 +805,16 @@ namespace Classy
                             var childTo = PerformMap(toProp.PropertyType.GetGenericArguments()[0], fromInner);
                             if (childTo != null)
                             {
-                                result.AddOrUpdate(currentIndex, childTo, (x, y) => childTo);
+                                lock (result) // All writes, so lock is faster than ConcurrentDictionary
+                                {
+                                    result.Add(currentIndex, childTo);
+                                }
                             }
                         }));
                 i++;
             }
             Task.WaitAll(tasks.ToArray());
-            foreach (var item in result)
+            foreach (var item in result.OrderBy(a => a.Key))
             {
                 list.Add(item.Value);
             }
@@ -921,7 +999,7 @@ namespace Classy
         /// <param name="val">The value to set.</param>
         private void SetValue(object toObject, PropertyInfo propInfo, object val)
         {
-            if (!Config.ExpressionTreeGetSetCalls || toObject.GetType().IsValueType)
+            if (!Config.ExpressionTreeGetSetCalls || toObject is ValueType)
             {
                 // Cannot use ExpressionTree when working with ValueTypes
                 propInfo.SetValue(toObject, val, null);
@@ -940,7 +1018,7 @@ namespace Classy
 
                 var lambda = Expression.Lambda<Action<object, object>>(body, target, value);
                 setter = lambda.Compile();
-                _setterMaps.AddOrUpdate(propInfo, setter, (info, orig) => orig);
+                setter = _setterMaps.GetOrAdd(propInfo, setter);
             }
             setter(toObject, val);
         }
@@ -971,13 +1049,28 @@ namespace Classy
                     typeof(object));
             var lambda = Expression.Lambda<Func<object, object>>(body, target);
             getter = lambda.Compile();
-            _getterMaps.AddOrUpdate(propInfo, getter, (info, orig) => orig);
+            getter = _getterMaps.GetOrAdd(propInfo, getter);
             return getter(fromObject);
         }
 
         #endregion
 
         #region << Helper Methods >>
+
+        /// <summary>
+        /// Ensures the caller is not trying to use the same mapping instance in multiple threads at the same time.
+        /// </summary>
+        private void CheckForInProgress()
+        {
+            if (_inProgress)
+            {
+                throw new MappingException(
+                    "The same instance of ClassyMapper is being used on multiple threads at the same time.  " + 
+                    "ClassyMapper has built in multi-threading on lists.  " +
+                    "If you still want to do your own multi-threading, " + 
+                    "please create new instances of ClassyMapper on each thread instead.");
+            }
+        }
 
         /// <summary>
         /// Handles the scenario when a To object is being mapped from a null From object.
@@ -1036,13 +1129,29 @@ namespace Classy
         /// Returns whether this property can be mapped.
         /// </summary>
         /// <param name="attr">The MapProperty attribute used to determine if it can be mapped.</param>
+        /// <param name="allAttr">The MapAllProperties attributed used to determine if it can be mapped.</param>
         /// <param name="check">The object where the data is being mapped to/from.</param>
+        /// <param name="propInfo">The property info object of the property being checked.</param>
         /// <returns>True if this property can be mapped; false otherwise.</returns>
-        private bool CanMap(MapPropertyAttribute attr, object check)
+        private bool CanMap(MapPropertyAttribute attr, MapAllPropertiesAttribute allAttr, object check, PropertyInfo propInfo)
         {
-            return attr == null ||
+            var checkType = check.GetType();
+            bool mapPropCheck = attr == null ||
                 attr.FullName == null ||
-                check.GetType().FullName.Equals(attr.FullName, StringComparison.OrdinalIgnoreCase);
+                (allAttr != null && allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.All) ||
+                checkType.FullName.Equals(attr.FullName, StringComparison.OrdinalIgnoreCase);
+
+            bool mapAllPropertiesCheck = 
+                attr != null ||
+                allAttr == null || 
+                allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.All ||
+                (allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.TopLevelOnly &&
+                    propInfo.DeclaringType == checkType) ||
+                (allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.BaseTypeOnly &&
+                    propInfo.DeclaringType != checkType && 
+                        (allAttr.AllowedBaseTypes == null || allAttr.AllowedBaseTypes.Contains(propInfo.DeclaringType))
+                );
+            return mapPropCheck && mapAllPropertiesCheck;
         }
 
         /// <summary>

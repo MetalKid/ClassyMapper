@@ -52,6 +52,7 @@
     <Compile Include="Attributes\MapPropertyTimestamp.cs" />
     <Compile Include="ClassyMapper.cs" />
     <Compile Include="ClassyMapperConfig.cs" />
+    <Compile Include="Enums\MapAllPropertiesTypeEnum.cs" />
     <Compile Include="Exceptions\MappingException.cs" />
     <Compile Include="Interfaces\IClassyMapper.cs" />
     <Compile Include="Interfaces\IClassyMapperConfig.cs" />
