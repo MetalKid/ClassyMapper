@@ -66,6 +66,12 @@ public class SomeDto
 
 The call is the same as in the basic version.
 
+[New] You can pass in the MapAllPropertiesTypeEnum.  All means you want everything mapped.  TopLevelOnly means only the properties defined in the class this attribute is in (ignores inherited properties).  BaseTypeOnly will map all the inherited properties only, but you can still specify [MapProperty] on the current level.  You also have the option of passing in the specific BaseTypes to map.  Leaving this null means all of them.  If one of the base types is left out, it will be skipped in its entirety unless that base type already had [MapProperties] defined on it.  a MapProperty attribute will always trump the MapAllProperties attribute.
+
+[New] No Attributes
+--------------------------------
+As of v1.1.1, you no longer need to specify attributes on any of the classes to get them to map.  This will even speed things up slightly.  However, the assumption is that all the properties should be mapped over.
+
 Custom Mapping
 --------------------------------
 You may want to do the bulk of your mapping with ClassyMapper, but there are scenarios that require complicated logic to do that mapping.  You can pass in a method for this scenario.  For example:
@@ -327,7 +333,7 @@ input.Children.Add(new ChildEntity { ChildA = "B", Parent = input });
 var dto = ClassyMapper.New().Map<ParentDto>(input);
 ```
 
-[New] Custom Constructors
+Custom Constructors
 --------------------------------
 ClassyMapper just got the ability to register a callback to instantiate new To classes for the current from object. You can set it up like this:
 
@@ -365,7 +371,7 @@ ThrowExceptionIfNoMatchingPropertyFound - If you always expect your To Object pr
 
 IgnoreEnumCase - When an enum is mapped from a string property, this will cause the Enum.Parse call to ignore case if set to true. - Default: True
 
-[New] IClassyMapper
+IClassyMapper
 --------------------------------
 IClassyMapper was added to support IoC injecting ClassyMapper wherever you need/want to.
 
