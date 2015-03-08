@@ -7,15 +7,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
-using Classy.Attributes;
-using Classy.Enums;
-using Classy.Exceptions;
-using Classy.Interfaces;
+using ClassyMapper.Attributes;
+using ClassyMapper.Enums;
+using ClassyMapper.Exceptions;
+using ClassyMapper.Interfaces;
 
 #endregion
 
-namespace Classy
+namespace ClassyMapper
 {
     /// <summary>
     /// This class allows mapping from one class to another with the use of MapProperty attributes.  A user can
@@ -206,8 +207,8 @@ namespace Classy
                 return result;
             }
 
-            result = type.GetProperties();
-            _propertyInfoCache.AddOrUpdate(type, result, (info, orig) => orig);
+            result = type.GetProperties(BindingFlags.Instance | BindingFlags.Public);
+            _propertyInfoCache.TryAdd(type, result);
             return result;
         }
 
@@ -228,7 +229,7 @@ namespace Classy
                 type.GetCustomAttributes(_mapAllPropertiesAttributeType, false).FirstOrDefault() as
                     MapAllPropertiesAttribute;
 
-            _mapAllPropertiesCache.AddOrUpdate(type, result, (info, orig) => orig);
+            _mapAllPropertiesCache.TryAdd(type, result);
             return result;
         }
 
@@ -249,7 +250,7 @@ namespace Classy
                 pi.GetCustomAttributes(_mapPropertyAttributeType, false).FirstOrDefault() as
                     MapPropertyAttribute;
 
-            _mapPropertyCache.AddOrUpdate(pi, result, (info, orig) => orig);
+            _mapPropertyCache.TryAdd(pi, result);
             return result;
         }
 
@@ -375,7 +376,7 @@ namespace Classy
         /// </summary>
         /// <typeparam name="TTo">The type of object being mapped to.</typeparam>
         /// <param name="from">The object being mapped from.</param>
-        /// <returns></returns>
+        /// <returns>The mapped object.</returns>
         public TTo Map<TTo>(object from)
         {
             CheckForInProgress();
@@ -392,7 +393,7 @@ namespace Classy
         /// <typeparam name="TTo">The type of object being mapped to.</typeparam>
         /// <param name="to">The instance of the object being mapped to.</param>
         /// <param name="from">The object being mapped from.</param>
-        /// <returns></returns>
+        /// <returns>The mapped object.</returns>
         public TTo Map<TTo>(TTo to, object from)
         {
             CheckForInProgress();
@@ -401,108 +402,6 @@ namespace Classy
             var result = (TTo) PerformMap(typeof (TTo), to, from);
             _inProgress = false;
             return result;
-        }
-
-        #endregion
-
-        #region << Assign Methods >>
-
-        /// <summary>
-        /// Invokes any custom maps that may exist for the given to/from combination.
-        /// </summary>
-        /// <param name="to">The instance of the object being mapped to.</param>
-        /// <param name="from">The object being mapped from.</param>
-        private void AssignCustomMap(object to, object from)
-        {
-            if (to == null || from == null || _customMaps.Keys.Count == 0)
-            {
-                return;
-            }
-
-            Delegate method;
-            if (!_customMaps.TryGetValue(GetCustomMapKey(from.GetType(), to.GetType()), out method))
-            {
-                return;
-            }
-
-            if (method != null)
-            {
-                method.DynamicInvoke(from, to);
-            }
-        }
-
-        /// <summary>
-        /// Maps the property.
-        /// </summary>
-        /// <param name="mapPropAttr">The MapProperty attribute on the Property, if any.</param>
-        /// <param name="toObject">The instance of the object being mapped to.</param>
-        /// <param name="toProp">The property being mapped to.</param>
-        /// <param name="fromObject">The object being mapped from.</param>
-        /// <param name="fromProp">The property being mapped from.</param>
-        private void AssignValue(
-            MapPropertyAttribute mapPropAttr,
-            object toObject,
-            PropertyInfo toProp,
-            object fromObject,
-            PropertyInfo fromProp)
-        {
-            var value = GetValue(fromObject, fromProp);
-
-            if (AreEqualTypes(toProp, fromProp))
-            {
-                SetValue(toObject, toProp, value);
-            }
-            else if (mapPropAttr is MapPropertyTimestamp)
-            {
-                MapTimestamp(toObject, toProp, value);
-            }
-            else if (toProp.PropertyType == _stringType)
-            {
-                // If target property is a string, just call ToString on whatever source property is
-                SetValue(toObject, toProp, value == null ? null : value.ToString());
-            }
-            else if (IsList(toProp))
-            {
-                MapList(toObject, toProp, value);
-            }
-            else if (IsAssignableEnumTo(toProp, fromProp))
-            {
-                if (Enum.IsDefined(toProp.PropertyType, value))
-                {
-                    SetValue(toObject, toProp, Enum.Parse(toProp.PropertyType, value.ToString(), Config.IgnoreEnumCase));
-                }
-            }
-            else if (IsAssignableEnumFrom(toProp, fromProp))
-            {
-                SetValue(toObject, toProp, value);
-            }
-            else if (IsFromNullableToNonNullable(toProp, fromProp) ||
-                IsAssignableNullableEnumFrom(toProp, fromProp))
-            {
-                // Map nullable source to non-nullable target, if not null
-                if (value != null)
-                {
-                    SetValue(toObject, toProp, value);
-                }
-            }
-            else if (IsAssignableNullableEnumTo(toProp, fromProp))
-            {
-                if (Enum.IsDefined(toProp.PropertyType.GetGenericArguments()[0], value))
-                {
-                    SetValue(
-                        toObject,
-                        toProp,
-                        Enum.Parse(
-                            toProp.PropertyType.GetGenericArguments()[0],
-                            value.ToString(),
-                            Config.IgnoreEnumCase));
-                }
-            }
-            else if (!toProp.PropertyType.IsPrimitive)
-            {
-                // Map class/struct
-                SetValue(toObject, toProp, PerformMap(toProp.PropertyType, value));
-            }
         }
 
         #endregion
@@ -525,10 +424,59 @@ namespace Classy
             var key = GetCustomMapKey(from.GetType(), toType);
 
             Delegate method;
-            return !_constructors.TryGetValue(key, out method) ? 
-                Activator.CreateInstance(toType) : 
+            return !_constructors.TryGetValue(key, out method) ?
+                Activator.CreateInstance(toType) :
                 method.DynamicInvoke(@from);
         }
+
+        // NOTE: Future attempt to emit IL to create new objeect to speed things up further
+
+      //private object CreateInstance(Type toType, object from)
+      //  {
+            //if (_constructors.Count == 0 || from == null)
+            //{
+            //    // Call parameterless constructor; Create instance of To object
+            //    return GetCreateCall(toType)();
+            //}
+            //var key = GetCustomMapKey(from.GetType(), toType);
+
+            //Delegate method;
+            //return !_constructors.TryGetValue(key, out method) ?
+            //    GetCreateCall(toType)() : 
+            //    method.DynamicInvoke(from);
+     //   }
+
+        //private static ConcurrentDictionary<Type, ObjectActivator> _createConstrutors =
+        //    new ConcurrentDictionary<Type, ObjectActivator>();
+
+        //delegate T ObjectActivator<T>(params object[] args);
+
+        //private CreateConstructorDelegate GetCreateCall(Type toType)
+        //{
+        //    ObjectActivator result;
+        //    if (_createConstrutors.TryGetValue(toType, out result))
+        //    {
+        //        return result;
+        //    }
+
+        //    ConstructorInfo ctor = toType.GetConstructors()[0];
+        //    DynamicMethod method = new DynamicMethod("CreateIntance", toType, null);
+        //    ILGenerator gen = method.GetILGenerator();
+        //    gen.Emit(OpCodes.Ldarg_0);//arr
+        //    gen.Emit(OpCodes.Ldc_I4_0);
+        //    gen.Emit(OpCodes.Ldelem_Ref);
+        //    gen.Emit(OpCodes.Unbox_Any, typeof(int));
+        //    gen.Emit(OpCodes.Ldarg_0);//arr
+        //    gen.Emit(OpCodes.Ldc_I4_1);
+        //    gen.Emit(OpCodes.Ldelem_Ref);
+        //    gen.Emit(OpCodes.Castclass, typeof(string));
+        //    gen.Emit(OpCodes.Newobj, ctor);// new Created
+        //    gen.Emit(OpCodes.Ret);
+
+        //    result = (ObjectActivator)method.CreateDelegate(typeof(ObjectActivator));
+        //    _createConstrutors.TryAdd(toType, result);
+        //    return result;
+        //}
 
         /// <summary>
         /// Returns a mapped object of toType from the given from object.
@@ -664,6 +612,7 @@ namespace Classy
             {
                 var mapProperty = GetMapPropertyAttribute(fromProp);
                 if ((mapProperty == null && fromMapAllPropertiesAttr == null) ||
+                    (mapProperty != null && mapProperty.MapPropertyType == MapPropertyTypeEnum.Exclude) ||
                     !CanMap(mapProperty, fromMapAllPropertiesAttr, toObject, fromProp))
                 {
                     continue;
@@ -713,6 +662,7 @@ namespace Classy
                 if (hasAtLeastOneMappingAttributes)
                 {
                     if ((mapProperty == null && toMapAllPropertiesAttr == null) ||
+                        (mapProperty != null && mapProperty.MapPropertyType == MapPropertyTypeEnum.Exclude) ||
                         !CanMap(mapProperty, toMapAllPropertiesAttr, fromObject, toProp))
                     {
                         continue;
@@ -871,6 +821,119 @@ namespace Classy
             if (nullable != null)
             {
                 nullable.IsNull = true;
+            }
+        }
+
+        #endregion
+
+        #region << Assign Methods >>
+
+        /// <summary>
+        /// Invokes any custom maps that may exist for the given to/from combination.
+        /// </summary>
+        /// <param name="to">The instance of the object being mapped to.</param>
+        /// <param name="from">The object being mapped from.</param>
+        private void AssignCustomMap(object to, object from)
+        {
+            if (to == null || from == null || _customMaps.Keys.Count == 0)
+            {
+                return;
+            }
+
+            Delegate method;
+            if (!_customMaps.TryGetValue(GetCustomMapKey(from.GetType(), to.GetType()), out method))
+            {
+                return;
+            }
+
+            if (method != null)
+            {
+                method.DynamicInvoke(from, to);
+            }
+        }
+
+        /// <summary>
+        /// Maps the property.
+        /// </summary>
+        /// <param name="mapPropAttr">The MapProperty attribute on the Property, if any.</param>
+        /// <param name="toObject">The instance of the object being mapped to.</param>
+        /// <param name="toProp">The property being mapped to.</param>
+        /// <param name="fromObject">The object being mapped from.</param>
+        /// <param name="fromProp">The property being mapped from.</param>
+        private void AssignValue(
+            MapPropertyAttribute mapPropAttr,
+            object toObject,
+            PropertyInfo toProp,
+            object fromObject,
+            PropertyInfo fromProp)
+        {
+            var value = GetValue(fromObject, fromProp);
+
+            if (AreEqualTypes(toProp, fromProp))
+            {
+                SetValue(toObject, toProp, value);
+            }
+            else if (mapPropAttr != null && mapPropAttr.IsTimestamp)
+            {
+                MapTimestamp(toObject, toProp, value);
+            }
+            else if (toProp.PropertyType == _stringType)
+            {
+                // If target property is a string, just call ToString on whatever source property is
+                SetValue(toObject, toProp, value == null ? null : value.ToString());
+            }
+            else if (IsList(toProp))
+            {
+                if (!Config.IgnoreLists)
+                {
+                    MapList(toObject, toProp, value);
+                }
+            }
+            else if (IsAssignableEnumTo(toProp, fromProp))
+            {
+                if (Enum.IsDefined(toProp.PropertyType, value))
+                {
+                    SetValue(toObject, toProp, Enum.Parse(toProp.PropertyType, value.ToString(), Config.IgnoreEnumCase));
+                }
+            }
+            else if (IsAssignableEnumFrom(toProp, fromProp))
+            {
+                SetValue(toObject, toProp, value);
+            }
+            else if (IsFromNullableToNonNullable(toProp, fromProp) ||
+                IsAssignableNullableEnumFrom(toProp, fromProp))
+            {
+                // Map nullable source to non-nullable target, if not null
+                if (value != null)
+                {
+                    SetValue(toObject, toProp, value);
+                }
+            }
+            else if (IsAssignableNullableEnumTo(toProp, fromProp))
+            {
+                if (Enum.IsDefined(toProp.PropertyType.GetGenericArguments()[0], value))
+                {
+                    SetValue(
+                        toObject,
+                        toProp,
+                        Enum.Parse(
+                            toProp.PropertyType.GetGenericArguments()[0],
+                            value.ToString(),
+                            Config.IgnoreEnumCase));
+                }
+            }
+            else if (!toProp.PropertyType.IsPrimitive)
+            {
+                // Map class/struct
+                var subToObject = toProp.GetValue(toObject, null);
+                if (subToObject == null)
+                {
+                    SetValue(toObject, toProp, PerformMap(toProp.PropertyType, value));
+                }
+                else
+                {
+                    SetValue(toObject, toProp, PerformMap(toProp.PropertyType, subToObject, value));
+                }
             }
         }
 
@@ -1133,24 +1196,34 @@ namespace Classy
         /// <param name="check">The object where the data is being mapped to/from.</param>
         /// <param name="propInfo">The property info object of the property being checked.</param>
         /// <returns>True if this property can be mapped; false otherwise.</returns>
-        private bool CanMap(MapPropertyAttribute attr, MapAllPropertiesAttribute allAttr, object check, PropertyInfo propInfo)
+        private bool CanMap(
+            MapPropertyAttribute attr,
+            MapAllPropertiesAttribute allAttr,
+            object check,
+            PropertyInfo propInfo)
         {
             var checkType = check.GetType();
-            bool mapPropCheck = attr == null ||
-                attr.FullName == null ||
-                (allAttr != null && allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.All) ||
-                checkType.FullName.Equals(attr.FullName, StringComparison.OrdinalIgnoreCase);
+            bool mapPropCheck = (attr == null &&
+                                 (allAttr == null || allAttr.AllPropertiesType != MapAllPropertiesTypeEnum.None)) ||
+                                attr != null &&
+                                (attr.MapPropertyType != MapPropertyTypeEnum.Exclude &&
+                                 (attr.FullName == null ||
+                                  (allAttr != null && allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.All) ||
+                                  checkType.FullName.Equals(attr.FullName, StringComparison.OrdinalIgnoreCase)));
 
-            bool mapAllPropertiesCheck = 
-                attr != null ||
-                allAttr == null || 
-                allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.All ||
-                (allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.TopLevelOnly &&
-                    propInfo.DeclaringType == checkType) ||
-                (allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.BaseTypeOnly &&
-                    propInfo.DeclaringType != checkType && 
-                        (allAttr.AllowedBaseTypes == null || allAttr.AllowedBaseTypes.Contains(propInfo.DeclaringType))
-                );
+            bool mapAllPropertiesCheck = attr != null || allAttr == null ||
+                                         allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.All ||
+                                         (allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.TopLevelOnly &&
+                                          propInfo.DeclaringType == checkType) ||
+                                         (allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.BaseTypeOnly &&
+                                          propInfo.DeclaringType != checkType &&
+                                          (allAttr.AllowedBaseTypes == null ||
+                                           allAttr.AllowedBaseTypes.Contains(propInfo.DeclaringType)));
+
+            if (allAttr != null && allAttr.AllPropertiesType == MapAllPropertiesTypeEnum.None)
+            {
+                return mapPropCheck;
+            }
             return mapPropCheck && mapAllPropertiesCheck;
         }
 

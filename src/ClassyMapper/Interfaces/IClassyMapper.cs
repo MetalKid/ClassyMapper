@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 #endregion
 
-namespace Classy.Interfaces
+namespace ClassyMapper.Interfaces
 {
     /// <summary>
     /// This interface defines all public methods ClassyMapper exposes in case this needs to be IoC injected.

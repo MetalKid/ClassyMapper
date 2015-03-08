@@ -1,11 +1,11 @@
 ﻿#region << Usings >>
 
 using System;
-using Classy.Enums;
+using ClassyMapper.Enums;
 
 #endregion
 
-namespace Classy.Attributes
+namespace ClassyMapper.Attributes
 {
     /// <summary>
     /// This attribute is used to specify that all properties should be mapped.  If at least one property should

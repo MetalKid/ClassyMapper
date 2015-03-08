@@ -7,8 +7,8 @@
     <ProjectGuid>{C2A83039-1BC6-44CB-B81E-1C0DD3344A04}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Classy</RootNamespace>
-    <AssemblyName>Classy</AssemblyName>
+    <RootNamespace>ClassyMapper</RootNamespace>
+    <AssemblyName>ClassyMapper</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -21,7 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Debug\Classy.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\ClassyMapper.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -30,7 +30,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <DocumentationFile>bin\Release\Classy.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\ClassyMapper.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
@@ -49,10 +49,12 @@
   <ItemGroup>
     <Compile Include="Attributes\MapAllPropertiesAttribute.cs" />
     <Compile Include="Attributes\MapPropertyAttribute.cs" />
-    <Compile Include="Attributes\MapPropertyTimestamp.cs" />
     <Compile Include="ClassyMapper.cs" />
     <Compile Include="ClassyMapperConfig.cs" />
     <Compile Include="Enums\MapAllPropertiesTypeEnum.cs" />
+    <Compile Include="Enums\MapPropertyTypeEnum.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Exceptions\MappingException.cs" />
     <Compile Include="Interfaces\IClassyMapper.cs" />
     <Compile Include="Interfaces\IClassyMapperConfig.cs" />

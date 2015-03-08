@@ -55,9 +55,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Classy\Classy.csproj">
+    <ProjectReference Include="..\ClassyMapper\ClassyMapper.csproj">
       <Project>{c2a83039-1bc6-44cb-b81e-1c0dd3344a04}</Project>
-      <Name>Classy</Name>
+      <Name>ClassyMapper</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>

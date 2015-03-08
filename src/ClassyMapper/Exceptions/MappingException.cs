@@ -4,7 +4,7 @@ using System;
 
 #endregion
 
-namespace Classy.Exceptions
+namespace ClassyMapper.Exceptions
 {
     /// <summary>
     /// This exception is thrown when something prevents two classes from being mapped together.

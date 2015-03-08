@@ -1,4 +1,4 @@
-﻿namespace Classy.Enums
+﻿namespace ClassyMapper.Enums
 {
     /// <summary>
     /// This enum is used to define whether All properties or only base type (inherited) proprties should be mapped.
@@ -17,6 +17,10 @@
         /// <summary>
         /// Only properties from the current level are included.
         /// </summary>
-        TopLevelOnly
+        TopLevelOnly,
+        /// <summary>
+        /// All properties are excluded from mapping.  Only MapProperty attributes will be included.
+        /// </summary>
+        None
     }
 }

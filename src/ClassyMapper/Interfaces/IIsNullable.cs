@@ -1,4 +1,4 @@
-﻿namespace Classy.Interfaces
+﻿namespace ClassyMapper.Interfaces
 {
     /// <summary>
     /// This interface is used to determine if a mapped to class is actually mapped from a null object.
