@@ -1450,7 +1450,7 @@ namespace ClassyMapperTest
 
         #endregion
 
-        #region << Ihnerit Test >>
+        #region << Inherit Test >>
 
         [TestMethod]
         public void MapEntityToDto_Inherit_AllProperties()
@@ -1610,7 +1610,6 @@ namespace ClassyMapperTest
         #endregion
 
         #region << Direct Reference of Non Primitive Test >>
-
         
         [TestMethod]
         public void MapDtoToEntity_DirectNonPrimitiveReference_Equal()
@@ -1639,7 +1638,134 @@ namespace ClassyMapperTest
         
         #endregion
 
+        #region << List Reference Test >>
+
+        [TestMethod]
+        public void MapDtoToEntity_ListReference_ToDto()
+        {
+            // Arrange
+            MapListReferenceEntity input = new MapListReferenceEntity
+            {
+                A = "A",
+                List = new List<SomeEntity>
+                {
+                    new SomeEntity { A = "1", B = "2"},
+                    new SomeEntity { A = "2", B = "3"}
+                }
+            };
+            MapListReferenceDto dto = new MapListReferenceDto
+            {
+                A = "B",
+                List = new List<SomeDto>
+                {
+                    new SomeDto { A = "1", B = "C"},
+                    new SomeDto { A = "2", B = "D"}
+                }
+            };
+
+            // Act
+            var result = ClassyMap.New().Map(dto, input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(result.A, input.A, "Property 'A' does not match.");
+            Assert.AreEqual(result.A, dto.A, "Property 'A' does not match.");
+            Assert.AreEqual(result.List.Count, input.List.Count, "Property 'List.Count' does not match.");
+            Assert.AreEqual(result.List.Count, dto.List.Count, "Property 'List.Count' does not match.");
+
+            Assert.AreEqual(result.List.First(), dto.List.First(), "Reference 'List[0]' does not match.");
+            Assert.AreEqual(result.List.First().B, dto.List.First().B, "Property 'List[0].B' does not match.");
+            Assert.AreEqual(result.List.First().B, input.List.First().B, "Property 'List[0].B' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_ListReference_FromDto()
+        {
+            // Arrange
+            MapListReferenceDto input = new MapListReferenceDto
+            {
+                A = "B",
+                List = new List<SomeDto> {new SomeDto {A = "1", B = "C"}, new SomeDto {A = "2", B = "D"}}
+            };
+
+            MapListReferenceEntity entity = new MapListReferenceEntity
+            {
+                A = "A",
+                List = new List<SomeEntity> {new SomeEntity {A = "1", B = "2"}, new SomeEntity {A = "2", B = "3"}}
+            };
+
+            // Act
+            var result = ClassyMap.New().Map(entity, input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(result.A, input.A, "Property 'A' does not match.");
+            Assert.AreEqual(result.A, entity.A, "Property 'A' does not match.");
+            Assert.AreEqual(result.List.Count, input.List.Count, "Property 'List.Count' does not match.");
+            Assert.AreEqual(result.List.Count, entity.List.Count, "Property 'List.Count' does not match.");
+
+            Assert.AreEqual(result.List.First(), entity.List.First(), "Reference 'List[0]' does not match.");
+            Assert.AreEqual(result.List.First().B, entity.List.First().B, "Property 'List[0].B' does not match.");
+            Assert.AreEqual(result.List.First().B, input.List.First().B, "Property 'List[0].B' does not match.");
+        }
+
+        [TestMethod]
+        public void MapDtoToEntity_ListReference_FromDto_OneNoMatch()
+        {
+            // Arrange
+            MapListReferenceDto input = new MapListReferenceDto
+            {
+                A = "B",
+                List = new List<SomeDto>
+                {
+                    new SomeDto { A = "1", B = "C"},
+                    new SomeDto { A = "2", B = "D"}
+                }
+            };
+
+            MapListReferenceEntity entity = new MapListReferenceEntity
+            {
+                A = "A",
+                List = new List<SomeEntity>
+                {
+                    new SomeEntity { A = "1", B = "2"},
+                    new SomeEntity { A = "3", B = "3"}
+                }
+            };
+        
+            // Act
+            var result = ClassyMap.New().Map(entity, input);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(result.A, input.A, "Property 'A' does not match.");
+            Assert.AreEqual(result.A, entity.A, "Property 'A' does not match.");
+            Assert.AreEqual(3, result.List.Count, "Property 'List.Count' does not match.");
+            Assert.AreEqual(3, result.List.Count, "Property 'List.Count' does not match.");
+
+            Assert.AreEqual(result.List.First(), entity.List.First(), "Reference 'List[0]' does not match.");
+            Assert.AreEqual(result.List.First().B, entity.List.First().B, "Property 'List[0].B' does not match.");
+            Assert.AreEqual(result.List.First().B, input.List.First().B, "Property 'List[0].B' does not match.");
+        }
+
+        #endregion
+
         #region << Private Classes >>
+
+        private class MapListReferenceEntity
+        {
+            public string A { get; set; }
+            public ICollection<SomeEntity> List { get; set; }
+        }
+
+        private class MapListReferenceDto
+        {
+            [MapProperty]
+            public string A { get; set; }
+            [MapProperty]
+            [MapListItem("A")]
+            public IList<SomeDto> List { get; set; }
+        }
 
         private class MapAllNoneEntity
         {

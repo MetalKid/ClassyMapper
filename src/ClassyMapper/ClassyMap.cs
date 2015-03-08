@@ -712,19 +712,20 @@ namespace ClassyMapper
         /// <param name="toObject">The instance of the object being mapped to.</param>
         /// <param name="toProp">The property being mapped to.</param>
         /// <param name="value">The value of this property on the from object.</param>
-        private void MapList(object toObject, PropertyInfo toProp, object value)
+        /// <param name="fromProp">The property being mapped from.</param>
+        private void MapList(object toObject, PropertyInfo toProp, object value, PropertyInfo fromProp)
         {
             // Will only map Generic lists
-            IEnumerable valueList = (IEnumerable)value;
-            if (!Config.MapEmptyListFromNullList && valueList == null)
+            IEnumerable valueListFrom = (IEnumerable)value;
+            if (!Config.MapEmptyListFromNullList && valueListFrom == null)
             {
                 return;
             }
 
             // Get an instance of the list or create one if needed
             // Must use IList in order to call Add
-            IList list = GetValue(toObject, toProp) as IList;
-            if (list == null)
+            IList listTo = GetValue(toObject, toProp) as IList;
+            if (listTo == null)
             {
                 // If the list was not already newed up in constructor, then initialize it
                 var listType = _listType.MakeGenericType(toProp.PropertyType.GetGenericArguments()[0]);
@@ -732,19 +733,23 @@ namespace ClassyMapper
                 {
                     return; // Can't map this type of list
                 }
-                list = Activator.CreateInstance(listType) as IList;
-                SetValue(toObject, toProp, list);
+                listTo = Activator.CreateInstance(listType) as IList;
+                SetValue(toObject, toProp, listTo);
             }
-            if (valueList == null || list == null)
+            if (valueListFrom == null || listTo == null)
             {
                 // Nothing to map
                 return;
             }
 
+            var toItemType = toProp.PropertyType.GetGenericArguments()[0];
+
+            MapListDataDto mapListData = LoadMapListData(fromProp, toProp, toItemType);
+            
             IDictionary<int, object> result = new Dictionary<int, object>();
             List<Task> tasks = new List<Task>();
             int i = 0;
-            foreach (var item in valueList)
+            foreach (var item in valueListFrom)
             {
                 var fromInner = item;
                 int currentIndex = i;
@@ -752,13 +757,59 @@ namespace ClassyMapper
                     Task.Factory.StartNew(
                         () =>
                         {
-                            var childTo = PerformMap(toProp.PropertyType.GetGenericArguments()[0], fromInner);
-                            if (childTo != null)
+                            object childTo = null;
+                            if (mapListData != null)
                             {
+                                Dictionary<PropertyInfo, object> fromKeys = new Dictionary<PropertyInfo, object>();
+                                foreach (var prop in mapListData.FromPropKeys)
+                                {
+                                    fromKeys.Add(prop, prop.GetValue(fromInner, null));
+                                }
+
+                                // Attempt to find matching object in both lists
+                                // NOTE: Properties are in index order
+                                foreach (var toItem in listTo)
+                                {
+                                    bool isMatch = true;
+                                    for (int j = 0; j < mapListData.FromPropKeys.Count; j++)
+                                    {
+                                        var fromPropKey = mapListData.FromPropKeys[j];
+                                        var toPropKey = mapListData.ToPropKeys[j];
+
+                                        if (toPropKey.GetValue(toItem, null) == fromKeys[fromPropKey])
+                                        {
+                                            continue;
+                                        }
+                                        isMatch = false;
+                                        break;
+                                    }
+                                    if (!isMatch)
+                                    {
+                                        continue;
+                                    }
+                                    childTo = toItem;
+                                    break;
+                                }
+                             
+                            }
+                            if (childTo == null)
+                            {
+                                // Item does not exist in list, so create a new one and add it
+                                childTo = PerformMap(toItemType, fromInner);
+                                if (childTo == null)
+                                {
+                                    return;
+                                }
+
                                 lock (result) // All writes, so lock is faster than ConcurrentDictionary
                                 {
                                     result.Add(currentIndex, childTo);
                                 }
+                            }
+                            else
+                            {
+                                // Item already exists in list, so just map to it
+                                PerformMap(toItemType, childTo, fromInner);
                             }
                         }));
                 i++;
@@ -766,8 +817,77 @@ namespace ClassyMapper
             Task.WaitAll(tasks.ToArray());
             foreach (var item in result.OrderBy(a => a.Key))
             {
-                list.Add(item.Value);
+                listTo.Add(item.Value);
             }
+        }
+
+        /// <summary>
+        /// Loads key data to find matching items in two different lists.
+        /// </summary>
+        /// <param name="fromProp">The list property on the from object.</param>
+        /// <param name="toProp">The list property on the to object.</param>
+        /// <param name="toItemType">The type of list item in the to object.</param>
+        /// <returns>MapListDataDto.</returns>
+        private MapListDataDto LoadMapListData(PropertyInfo fromProp, PropertyInfo toProp, Type toItemType)
+        {
+            MapListDataDto result = null;
+  
+            MapListItemAttribute fromMapList =
+                fromProp.GetCustomAttributes(typeof(MapListItemAttribute), false).FirstOrDefault() as
+                    MapListItemAttribute;
+
+            MapListItemAttribute toMapList = fromMapList != null ? null :
+                toProp.GetCustomAttributes(typeof(MapListItemAttribute), false).FirstOrDefault() as
+                    MapListItemAttribute;
+
+            if (fromMapList != null)
+            {
+                result = new MapListDataDto();
+
+                var toItemTypeProperties = toItemType.GetProperties();
+                var itemTypeProps = fromProp.PropertyType.GetGenericArguments()[0].GetProperties();
+                foreach (var propName in fromMapList.KeyProperties)
+                {
+                    result.FromPropKeys.Add(itemTypeProps.First(a => a.Name == propName));
+                }
+                foreach (var prop in result.FromPropKeys)
+                {
+                    string targetName = prop.Name;
+                    var attr = prop.GetCustomAttributes(typeof(MapPropertyAttribute), false).FirstOrDefault() as
+                        MapPropertyAttribute;
+                    if (attr != null && !string.IsNullOrEmpty(attr.PropertyName))
+                    {
+                        targetName = attr.PropertyName;
+                    }
+                    result.ToPropKeys.Add(toItemTypeProperties.First(a => a.Name == targetName));
+                }
+            }
+            else if (toMapList != null)
+            {
+                result = new MapListDataDto();
+
+                var toItemTypeProperties = toItemType.GetProperties();
+                foreach (var propName in toMapList.KeyProperties)
+                {
+                    result.ToPropKeys.Add(toItemTypeProperties.First(a => a.Name == propName));
+                }
+                var itemTypeProps = fromProp.PropertyType.GetGenericArguments()[0].GetProperties();
+
+                foreach (var prop in result.ToPropKeys)
+                {
+                    string targetName = prop.Name;
+                    var attr =
+                        prop.GetCustomAttributes(typeof (MapPropertyAttribute), false).FirstOrDefault() as
+                            MapPropertyAttribute;
+                    if (attr != null && !string.IsNullOrEmpty(attr.PropertyName))
+                    {
+                        targetName = attr.PropertyName;
+                    }
+                    result.FromPropKeys.Add(itemTypeProps.First(a => a.Name == targetName));
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -886,7 +1006,7 @@ namespace ClassyMapper
             {
                 if (!Config.IgnoreLists)
                 {
-                    MapList(toObject, toProp, value);
+                    MapList(toObject, toProp, value, fromProp);
                 }
             }
             else if (IsAssignableEnumTo(toProp, fromProp))
@@ -1274,6 +1394,25 @@ namespace ClassyMapper
         private static string GetName(MapPropertyAttribute attr, PropertyInfo pi)
         {
             return attr == null || string.IsNullOrEmpty(attr.PropertyName) ? pi.Name : attr.PropertyName;
+        }
+
+        #endregion
+
+        #region << Private Classes >>
+
+        /// <summary>
+        /// This class holds data to help map items in different lists.
+        /// </summary>
+        private class MapListDataDto
+        {
+            public List<PropertyInfo> FromPropKeys { get; private set; }
+            public List<PropertyInfo> ToPropKeys { get; private set; }
+
+            public MapListDataDto()
+            {
+                FromPropKeys = new List<PropertyInfo>();
+                ToPropKeys = new List<PropertyInfo>();
+            }
         }
 
         #endregion
