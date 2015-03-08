@@ -10,7 +10,7 @@ namespace ClassyMapper.Interfaces
     /// <summary>
     /// This interface defines all public methods ClassyMapper exposes in case this needs to be IoC injected.
     /// </summary>
-    public interface IClassyMapper
+    public interface IClassyMap
     {
 
         #region << Properties >>
@@ -18,7 +18,7 @@ namespace ClassyMapper.Interfaces
         /// <summary>
         /// Gets the configuration data on how the objects will be mapped.
         /// </summary>
-        IClassyMapperConfig Config { get; }
+        IClassyMapConfig Config { get; }
 
         #endregion
 
@@ -31,7 +31,7 @@ namespace ClassyMapper.Interfaces
         /// <typeparam name="TTo">The type of object being mapped to.</typeparam>
         /// <param name="method">The method to invoke.</param>
         /// <returns>Instance of this ClassyMapper for chaining.</returns>
-        IClassyMapper RegisterCustomMap<TFrom, TTo>(Action<TFrom, TTo> method);
+        IClassyMap RegisterCustomMap<TFrom, TTo>(Action<TFrom, TTo> method);
 
         /// <summary>
         /// Registers a function that returns what objects to map from for a given TFrom object.
@@ -40,7 +40,7 @@ namespace ClassyMapper.Interfaces
         /// <typeparam name="TFrom">The type of object being mapped from.</typeparam>
         /// <param name="func">The function to invoke when working with a TFrom object.</param>
         /// <returns>Instance of this ClassyMapper for chaining.</returns>
-        IClassyMapper RegisterFromObjects<TFrom>(Func<TFrom, object[]> func);
+        IClassyMap RegisterFromObjects<TFrom>(Func<TFrom, object[]> func);
 
         /// <summary>
         /// Registers a method to call when creating a new TTo type object given the TFrom data.
@@ -49,7 +49,7 @@ namespace ClassyMapper.Interfaces
         /// <typeparam name="TTo">The type of object being created.</typeparam>
         /// <param name="method">The function to invoke when creating a new TTo from a TFrom mapping.</param>
         /// <returns>New instance of TTo.</returns>
-        IClassyMapper RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method);
+        IClassyMap RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method);
 
         /// <summary>
         /// Fully maps a list of source object of type TFrom to an IList of TTo type.

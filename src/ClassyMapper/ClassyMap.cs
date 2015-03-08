@@ -23,7 +23,7 @@ namespace ClassyMapper
     /// flatten an object hierarcy and restore it later.  All objects being mapped to MUST have a parameterless
     /// constructor.
     /// </summary>
-    public class ClassyMapper : IClassyMapper
+    public class ClassyMap : IClassyMap
     {
 
         #region << Static Variables >>
@@ -69,9 +69,9 @@ namespace ClassyMapper
         /// </summary>
         /// <param name="config">Configuration data on how the objects will be mapped.</param>
         /// <returns>A new instance of ClassyMapper.</returns>
-        public static IClassyMapper New(IClassyMapperConfig config = null)
+        public static IClassyMap New(IClassyMapConfig config = null)
         {
-            return new ClassyMapper(config);
+            return new ClassyMap(config);
         }
 
         #endregion
@@ -271,7 +271,7 @@ namespace ClassyMapper
         /// <summary>
         /// Gets the configuration data on how the objects will be mapped.
         /// </summary>
-        public IClassyMapperConfig Config { get; private set; }
+        public IClassyMapConfig Config { get; private set; }
 
         #endregion
 
@@ -281,9 +281,9 @@ namespace ClassyMapper
         /// Constructor that initializes all variables/properties.
         /// </summary>
         /// <param name="config">Configuration data on how the objects will be mapped.</param>
-        public ClassyMapper(IClassyMapperConfig config = null)
+        public ClassyMap(IClassyMapConfig config = null)
         {
-            Config = config ?? new ClassyMapperConfig();
+            Config = config ?? new ClassyMapConfig();
 
             _customMaps = new Dictionary<Tuple<Type, Type>, Delegate>();
             _constructors = new Dictionary<Tuple<Type, Type>, Delegate>();
@@ -302,7 +302,7 @@ namespace ClassyMapper
         /// <typeparam name="TTo">The type of object being mapped to.</typeparam>
         /// <param name="method">The method to invoke.</param>
         /// <returns>Instance of this ClassyMapper for chaining.</returns>
-        public IClassyMapper RegisterCustomMap<TFrom, TTo>(Action<TFrom, TTo> method)
+        public IClassyMap RegisterCustomMap<TFrom, TTo>(Action<TFrom, TTo> method)
         {
             _customMaps.Add(GetCustomMapKey(typeof(TFrom), typeof(TTo)), method);
             return this;
@@ -315,7 +315,7 @@ namespace ClassyMapper
         /// <typeparam name="TFrom">The type of object being mapped from.</typeparam>
         /// <param name="func">The function to invoke when working with a TFrom object.</param>
         /// <returns>Instance of this ClassyMapper for chaining.</returns>
-        public IClassyMapper RegisterFromObjects<TFrom>(Func<TFrom, object[]> func)
+        public IClassyMap RegisterFromObjects<TFrom>(Func<TFrom, object[]> func)
         {
             _fromObjects.Add(typeof(TFrom), func);
             return this;
@@ -328,7 +328,7 @@ namespace ClassyMapper
         /// <typeparam name="TTo">The type of object being created.</typeparam>
         /// <param name="method">The function to invoke when creating a new TTo from a TFrom mapping.</param>
         /// <returns>New instance of TTo.</returns>
-        public IClassyMapper RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method)
+        public IClassyMap RegisterConstructor<TFrom, TTo>(Func<TFrom, TTo> method)
         {
             _constructors.Add(GetCustomMapKey(typeof (TFrom), typeof (TTo)), method);
             return this;
@@ -1127,7 +1127,7 @@ namespace ClassyMapper
         {
             if (_inProgress)
             {
-                throw new MappingException(
+                throw new ClassyMapException(
                     "The same instance of ClassyMapper is being used on multiple threads at the same time.  " + 
                     "ClassyMapper has built in multi-threading on lists.  " +
                     "If you still want to do your own multi-threading, " + 
@@ -1179,7 +1179,7 @@ namespace ClassyMapper
 
             if (notMappedNames.Count > 0)
             {
-                throw new MappingException(
+                throw new ClassyMapException(
                     string.Format(
                         "The following properties were not mapped from type '{0}' to type '{1}': {2}",
                         fromObject.GetType().FullName,

@@ -13,10 +13,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 #endregion
 
-namespace ClassyTest
+namespace ClassyMapperTest
 {
     [TestClass]
-    public class ClassyMapperTest
+    public class ClassyMapTest
     {
 
         #region << Basic Mapping Tests >>
@@ -28,7 +28,7 @@ namespace ClassyTest
             TestEntity input = new TestEntity { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<TestDto>(input);
+            var result = ClassyMap.New().Map<TestDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -43,7 +43,7 @@ namespace ClassyTest
             TestDto input = new TestDto { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<TestEntity>(input);
+            var result = ClassyMap.New().Map<TestEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -58,7 +58,7 @@ namespace ClassyTest
             TestEntity input = new TestEntity { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New(new ClassyMapperConfig {ExpressionTreeGetSetCalls = true})
+            var result = ClassyMap.New(new ClassyMapConfig {ExpressionTreeGetSetCalls = true})
                 .Map<TestDto>(input);
 
             // Assert
@@ -78,7 +78,7 @@ namespace ClassyTest
             EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304, Check = 1 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<EnumDto>(input);
+            var result = ClassyMap.New().Map<EnumDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -94,7 +94,7 @@ namespace ClassyTest
             EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304 , Check = 2};
 
             // Act
-            var result = new ClassyMapper.ClassyMapper().Map<EnumDto>(input);
+            var result = new ClassyMap().Map<EnumDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -110,7 +110,7 @@ namespace ClassyTest
             EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304, Check = TestEnum.YourValue };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<EnumEntity>(input);
+            var result = ClassyMap.New().Map<EnumEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -126,7 +126,7 @@ namespace ClassyTest
             EnumEntity input = new EnumEntity { MyTest = 12, TesterId = 9304 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<EnumDto>(input);
+            var result = ClassyMap.New().Map<EnumDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -141,7 +141,7 @@ namespace ClassyTest
             EnumEntity2 input = new EnumEntity2 { MyTest = "MyValue", TesterId = 9304, Check = "MyValue" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<EnumDto>(input);
+            var result = ClassyMap.New().Map<EnumDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -157,7 +157,7 @@ namespace ClassyTest
             EnumDto input = new EnumDto { MyTest = TestEnum.MyValue, TesterId = 9304, Check = TestEnum.YourValue };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<EnumEntity2>(input);
+            var result = ClassyMap.New().Map<EnumEntity2>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -171,7 +171,7 @@ namespace ClassyTest
         {
             // Arrange
             EnumEntity input = new EnumEntity { MyTest = 1, TesterId = 9304 };
-            var mapper = ClassyMapper.ClassyMapper.New();
+            var mapper = ClassyMap.New();
 
             // Act
             mapper.Map<EnumDto>(input);
@@ -196,7 +196,7 @@ namespace ClassyTest
             TestEntity input = new TestEntity { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().RegisterCustomMap<TestEntity, TestDto>(
+            var result = ClassyMap.New().RegisterCustomMap<TestEntity, TestDto>(
                 (from, to) =>
                 {
                     to.A = from.B;
@@ -216,7 +216,7 @@ namespace ClassyTest
             TestDto input = new TestDto { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().RegisterCustomMap<TestDto, TestEntity>(
+            var result = ClassyMap.New().RegisterCustomMap<TestDto, TestEntity>(
                 (from, to) =>
                 {
                     to.A = from.B;
@@ -241,7 +241,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New()
+                ClassyMap.New()
                     .RegisterFromObjects<TestEntity>(from => new object[] { from, input2 })
                     .Map<TestDto>(input);
 
@@ -265,7 +265,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New()
+                ClassyMap.New()
                     .RegisterFromObjects<TestEntity>(from => new object[] { from, input2 })
                     .MapToList<TestDto, TestEntity>(input);
 
@@ -296,7 +296,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New()
+                ClassyMap.New()
                     .RegisterFromObjects<TestEntity>(from => new object[] { from, input2, from.Inner })
                     .MapToList<TestDto, TestEntity>(input);
 
@@ -324,7 +324,7 @@ namespace ClassyTest
             ComplexEntity input = new ComplexEntity { A = 1, B = 2, Inner = new ComplexEntityInner { B = "3" } };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ComplexDto>(input);
+            var result = ClassyMap.New().Map<ComplexDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -340,7 +340,7 @@ namespace ClassyTest
             ComplexEntity input = new ComplexEntity { A = 1, B = 2 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ComplexDto>(input);
+            var result = ClassyMap.New().Map<ComplexDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -357,7 +357,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New(new ClassyMapperConfig {CreateToObjectFromNullFromObject = true})
+                ClassyMap.New(new ClassyMapConfig {CreateToObjectFromNullFromObject = true})
                     .Map<ComplexDto>(input);
 
             // Assert
@@ -383,7 +383,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New(new ClassyMapperConfig {CreateToObjectFromNullFromObject = true})
+                ClassyMap.New(new ClassyMapConfig {CreateToObjectFromNullFromObject = true})
                     .Map<RecursionParentDto>(input);
 
             // Assert
@@ -445,7 +445,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { CreateToObjectFromNullFromObject = true, MaxNullDepth = 5 }).Map<RecursionParentDto>(input);
+            var result = ClassyMap.New(new ClassyMapConfig { CreateToObjectFromNullFromObject = true, MaxNullDepth = 5 }).Map<RecursionParentDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -486,7 +486,7 @@ namespace ClassyTest
             NullableEntity input = new NullableEntity { C = 1, D = DateTime.UtcNow };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<NullableDto>(input);
+            var result = ClassyMap.New().Map<NullableDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -503,7 +503,7 @@ namespace ClassyTest
             NullableDto input = new NullableDto { A = 10, B = DateTime.UtcNow };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<NullableEntity>(input);
+            var result = ClassyMap.New().Map<NullableEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -520,7 +520,7 @@ namespace ClassyTest
             NullableEntity input = new NullableEntity { A = 10, B = DateTime.Now, C = 1, D = DateTime.UtcNow };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<NullableDto>(input);
+            var result = ClassyMap.New().Map<NullableDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -537,7 +537,7 @@ namespace ClassyTest
             NullableDto input = new NullableDto { A = 10, B = DateTime.UtcNow, C = 20, D = DateTime.Now };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<NullableEntity>(input);
+            var result = ClassyMap.New().Map<NullableEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -558,7 +558,7 @@ namespace ClassyTest
             UpCastEntity input = new UpCastEntity { Test = 5 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<UpCastDto>(input);
+            var result = ClassyMap.New().Map<UpCastDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -572,7 +572,7 @@ namespace ClassyTest
             UpCastDto input = new UpCastDto { Test = 5 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<UpCastEntity>(input);
+            var result = ClassyMap.New().Map<UpCastEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -591,7 +591,7 @@ namespace ClassyTest
             NamespaceEntity2 input2 = new NamespaceEntity2 { A = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New()
+            var result = ClassyMap.New()
                 .RegisterFromObjects<NamespaceEntity>(from => new object[] { from, input2 })
                 .Map<NamespaceDto>(input);
 
@@ -612,7 +612,7 @@ namespace ClassyTest
             TimestampEntity input = new TimestampEntity { Timestamp = new byte[] { 1, 2, 3, 4, 5} };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<TimestampDto>(input);
+            var result = ClassyMap.New().Map<TimestampDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -626,7 +626,7 @@ namespace ClassyTest
             TimestampDto input = new TimestampDto { Timestamp = "AQIDBAU=" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<TimestampEntity>(input);
+            var result = ClassyMap.New().Map<TimestampEntity>(input);
 
             // Assert
             byte[] check = Convert.FromBase64String(input.Timestamp);
@@ -658,7 +658,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { IgnoreLists = true }).Map<SubListDto>(input);
+            var result = ClassyMap.New(new ClassyMapConfig { IgnoreLists = true }).Map<SubListDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -681,7 +681,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<SubListDto>(input);
+            var result = ClassyMap.New().Map<SubListDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -706,7 +706,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<SubListEntity>(input);
+            var result = ClassyMap.New().Map<SubListEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -726,7 +726,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<SubListDto>(input);
+            var result = ClassyMap.New().Map<SubListDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -744,7 +744,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<SubListEntity>(input);
+            var result = ClassyMap.New().Map<SubListEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -762,7 +762,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { MapEmptyListFromNullList = false }).Map<SubListDto>(input);
+            var result = ClassyMap.New(new ClassyMapConfig { MapEmptyListFromNullList = false }).Map<SubListDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -780,7 +780,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { MapEmptyListFromNullList = false }).Map<SubListEntity>(input);
+            var result = ClassyMap.New(new ClassyMapConfig { MapEmptyListFromNullList = false }).Map<SubListEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -800,7 +800,7 @@ namespace ClassyTest
             TestEntity result = new TestEntity();
 
             // Act
-            ClassyMapper.ClassyMapper.CopyValues(input, result);
+            ClassyMap.CopyValues(input, result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -816,7 +816,7 @@ namespace ClassyTest
             TestDto result = new TestDto();
 
             // Act
-            ClassyMapper.ClassyMapper.CopyValues(input, result);
+            ClassyMap.CopyValues(input, result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -832,7 +832,7 @@ namespace ClassyTest
             EnumDto result = new EnumDto();
 
             // Act
-            ClassyMapper.ClassyMapper.CopyValues(input, result);
+            ClassyMap.CopyValues(input, result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -851,7 +851,7 @@ namespace ClassyTest
             TestEntity result = new TestEntity();
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValues(result);
+            ClassyMap.DefaultStringValues(result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -866,7 +866,7 @@ namespace ClassyTest
             TestEntity result = new TestEntity { A = "G", B = "H" };
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValues(result);
+            ClassyMap.DefaultStringValues(result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -882,7 +882,7 @@ namespace ClassyTest
             string defaultString = "A";
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValues(result, defaultString);
+            ClassyMap.DefaultStringValues(result, defaultString);
 
             // Assert
             Assert.IsNotNull(result);
@@ -898,7 +898,7 @@ namespace ClassyTest
             string defaultString = "A";
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValues(result, defaultString);
+            ClassyMap.DefaultStringValues(result, defaultString);
 
             // Assert
             Assert.IsNotNull(result);
@@ -913,7 +913,7 @@ namespace ClassyTest
             TestEntity result = new TestEntity { A = "G", B = "H" };
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValuesIfNull(result);
+            ClassyMap.DefaultStringValuesIfNull(result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -929,7 +929,7 @@ namespace ClassyTest
             string defaultString = "A";
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValuesIfNull(result, defaultString);
+            ClassyMap.DefaultStringValuesIfNull(result, defaultString);
 
             // Assert
             Assert.IsNotNull(result);
@@ -944,7 +944,7 @@ namespace ClassyTest
             TestEntity result = new TestEntity { A = "G" };
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValuesIfNull(result);
+            ClassyMap.DefaultStringValuesIfNull(result);
 
             // Assert
             Assert.IsNotNull(result);
@@ -960,7 +960,7 @@ namespace ClassyTest
             string defaultString = "A";
 
             // Act
-            ClassyMapper.ClassyMapper.DefaultStringValuesIfNull(result, defaultString);
+            ClassyMap.DefaultStringValuesIfNull(result, defaultString);
 
             // Assert
             Assert.IsNotNull(result);
@@ -977,10 +977,10 @@ namespace ClassyTest
         {
             // Arrange
             TestEntity input = new TestEntity { A = "1", B = "2" };
-            ClassyMapper.ClassyMapper.New().Map<TestDto>(input);
+            ClassyMap.New().Map<TestDto>(input);
 
             // Act
-            ClassyMapper.ClassyMapper.ClearCacheObjects();
+            ClassyMap.ClearCacheObjects();
 
             // Assert
             // No exception means pass
@@ -1012,7 +1012,7 @@ namespace ClassyTest
             }
 
             // Act
-            var dtos = ClassyMapper.ClassyMapper.New().MapToList<BigDto, BigEntity>(entities);
+            var dtos = ClassyMap.New().MapToList<BigDto, BigEntity>(entities);
 
             // Assert
             Assert.AreEqual(entities.Count, dtos.Count);
@@ -1044,7 +1044,7 @@ namespace ClassyTest
             }
 
             // Act
-            var dtos = ClassyMapper.ClassyMapper.New().MapToList<BigDto, BigEntity>(entities);
+            var dtos = ClassyMap.New().MapToList<BigDto, BigEntity>(entities);
 
             // Assert
             Assert.AreEqual(entities.Count, dtos.Count);
@@ -1111,7 +1111,7 @@ namespace ClassyTest
 
             // Act
             var dtos =
-                ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true })
+                ClassyMap.New(new ClassyMapConfig { ExpressionTreeGetSetCalls = true })
                     .MapToList<BigEntity2, BigEntity>(entities);
 
             // Assert
@@ -1143,7 +1143,7 @@ namespace ClassyTest
 
             // Act
             var dtos =
-                ClassyMapper.ClassyMapper.New(new ClassyMapperConfig {ExpressionTreeGetSetCalls = true})
+                ClassyMap.New(new ClassyMapConfig {ExpressionTreeGetSetCalls = true})
                     .MapToList<BigEntity2, BigEntity>(entities);
 
             // Assert
@@ -1193,10 +1193,10 @@ namespace ClassyTest
         {
             // Arrange
             BigEntity input = new BigEntity { A = "1", AA = "2", YZAK = true, YZAN = 1, YZAM = 2, YZAL = 3, YZAJ = DateTime.UtcNow, YZAI = 8 };
-            ClassyMapper.ClassyMapper.DefaultStringValuesIfNull(input, "Test");
+            ClassyMap.DefaultStringValuesIfNull(input, "Test");
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<BigDto>(input);
+            var result = ClassyMap.New().Map<BigDto>(input);
             //var watch = System.Diagnostics.Stopwatch.StartNew();
             //for (int i = 0; i < 100000; i++)
             //    result = ClassyMapper.New().Map<BigDto>(input);
@@ -1228,7 +1228,7 @@ namespace ClassyTest
             MapClassEntity input = new MapClassEntity { A = "1", B = "2", C = "33", D = "32" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<MapClassDto>(input);
+            var result = ClassyMap.New().Map<MapClassDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1245,7 +1245,7 @@ namespace ClassyTest
             MapClassDto input = new MapClassDto { A = "1", B = "2", C = "33", D = "32" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<MapClassEntity>(input);
+            var result = ClassyMap.New().Map<MapClassEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1260,7 +1260,7 @@ namespace ClassyTest
         #region << MappingException Tests >>
 
         [TestMethod]
-        [ExpectedException(typeof(MappingException))]
+        [ExpectedException(typeof(ClassyMapException))]
         public void MapEntityToDto_MappingExceptionThrown()
         {
             // Arrange
@@ -1268,7 +1268,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New(new ClassyMapperConfig {ThrowExceptionIfNoMatchingPropertyFound = true})
+                ClassyMap.New(new ClassyMapConfig {ThrowExceptionIfNoMatchingPropertyFound = true})
                     .Map<TestDto>(input);
 
             // Assert
@@ -1276,7 +1276,7 @@ namespace ClassyTest
         }
 
         [TestMethod]
-        [ExpectedException(typeof(MappingException))]
+        [ExpectedException(typeof(ClassyMapException))]
         public void MapDtoToEntity_MappingExceptionThrown()
         {
             // Arrange
@@ -1284,7 +1284,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { ThrowExceptionIfNoMatchingPropertyFound = true })
+                ClassyMap.New(new ClassyMapConfig { ThrowExceptionIfNoMatchingPropertyFound = true })
                     .Map<TestEntity2>(input);
 
             // Assert
@@ -1304,7 +1304,7 @@ namespace ClassyTest
             input.Children.Add(new ChildEntity { ChildA = "B", Parent = input });
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ParentDto>(input);
+            var result = ClassyMap.New().Map<ParentDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1323,7 +1323,7 @@ namespace ClassyTest
             input.Children.Add(new ChildDto { ChildA = "B", Parent = input });
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ParentEntity>(input);
+            var result = ClassyMap.New().Map<ParentEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1345,7 +1345,7 @@ namespace ClassyTest
             NoParameterlessConstructorEntity input = new NoParameterlessConstructorEntity("1");
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<NoParameterlessConstructorDto>(input);
+            var result = ClassyMap.New().Map<NoParameterlessConstructorDto>(input);
 
             // Assert
             // See ExpectedException attribute
@@ -1359,7 +1359,7 @@ namespace ClassyTest
             NoParameterlessConstructorDto input = new NoParameterlessConstructorDto("1");
             
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<NoParameterlessConstructorEntity>(input);
+            var result = ClassyMap.New().Map<NoParameterlessConstructorEntity>(input);
 
             // Assert
             // See ExpectedException attribute
@@ -1373,7 +1373,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New()
+                ClassyMap.New()
                     .RegisterConstructor<NoParameterlessConstructorEntity, NoParameterlessConstructorDto>(
                         from => new NoParameterlessConstructorDto("2"))
                     .Map<NoParameterlessConstructorDto>(input);
@@ -1391,7 +1391,7 @@ namespace ClassyTest
 
             // Act
             var result =
-                ClassyMapper.ClassyMapper.New()
+                ClassyMap.New()
                     .RegisterConstructor<NoParameterlessConstructorDto, NoParameterlessConstructorEntity>(
                         from => new NoParameterlessConstructorEntity("2"))
                     .Map<NoParameterlessConstructorEntity>(input);
@@ -1412,7 +1412,7 @@ namespace ClassyTest
             StructEntity input = new StructEntity { Id = 5 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<StructDto>(input);
+            var result = ClassyMap.New().Map<StructDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1426,7 +1426,7 @@ namespace ClassyTest
             StructDto input = new StructDto { Id = 55 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<StructEntity>(input);
+            var result = ClassyMap.New().Map<StructEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1440,7 +1440,7 @@ namespace ClassyTest
             StructEntity input = new StructEntity { Id = 555 };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New(new ClassyMapperConfig { ExpressionTreeGetSetCalls = true })
+            var result = ClassyMap.New(new ClassyMapConfig { ExpressionTreeGetSetCalls = true })
                 .Map<StructDto>(input);
 
             // Assert
@@ -1459,7 +1459,7 @@ namespace ClassyTest
             InheritTestEntity input = new InheritTestEntity { A = "1", B = "2", C = "3"};
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<InheritTestDto2>(input);
+            var result = ClassyMap.New().Map<InheritTestDto2>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1475,7 +1475,7 @@ namespace ClassyTest
             InheritTestDto2 input = new InheritTestDto2 { A = "1", B = "2", C = "3" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<InheritTestEntity>(input);
+            var result = ClassyMap.New().Map<InheritTestEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1491,7 +1491,7 @@ namespace ClassyTest
             InheritTestEntity input = new InheritTestEntity { A = "1", B = "2", C = "3"};
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<InheritTestDtoAll2>(input);
+            var result = ClassyMap.New().Map<InheritTestDtoAll2>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1507,7 +1507,7 @@ namespace ClassyTest
             InheritTestDtoAll2 input = new InheritTestDtoAll2 { A = "1", B = "2", C = "3" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<InheritTestEntity>(input);
+            var result = ClassyMap.New().Map<InheritTestEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1527,7 +1527,7 @@ namespace ClassyTest
             SomeEntity input = new SomeEntity { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<SomeDto>(input);
+            var result = ClassyMap.New().Map<SomeDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1542,7 +1542,7 @@ namespace ClassyTest
             SomeDto input = new SomeDto { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<SomeEntity>(input);
+            var result = ClassyMap.New().Map<SomeEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1561,7 +1561,7 @@ namespace ClassyTest
             ExcludeEntity input = new ExcludeEntity { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ExcludeDto>(input);
+            var result = ClassyMap.New().Map<ExcludeDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1576,7 +1576,7 @@ namespace ClassyTest
             ExcludeDto input = new ExcludeDto { A = "1", B = "2" };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ExcludeEntity>(input);
+            var result = ClassyMap.New().Map<ExcludeEntity>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1599,7 +1599,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<MapAllNoneDto>(input);
+            var result = ClassyMap.New().Map<MapAllNoneDto>(input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -1628,7 +1628,7 @@ namespace ClassyTest
             };
 
             // Act
-            var result = ClassyMapper.ClassyMapper.New().Map<ChildDto>(dto, input);
+            var result = ClassyMap.New().Map<ChildDto>(dto, input);
 
             // Assert
             Assert.IsNotNull(result);
@@ -2096,10 +2096,10 @@ namespace ClassyTest
 
         private class NamespaceDto
         {
-            [MapProperty(fullName: "ClassyTest.ClassyMapperTest+NamespaceEntity")]
+            [MapProperty(fullName: "ClassyMapperTest.ClassyMapTest+NamespaceEntity")]
             public string A { get; set; }
 
-            [MapProperty("A", fullName: "ClassyTest.ClassyMapperTest+NamespaceEntity2")]
+            [MapProperty("A", fullName: "ClassyMapperTest.ClassyMapTest+NamespaceEntity2")]
             public string AA { get; set; }
         }
 

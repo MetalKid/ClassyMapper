@@ -10,7 +10,7 @@ namespace ClassyMapper.Exceptions
     /// This exception is thrown when something prevents two classes from being mapped together.
     /// </summary>
     [Serializable]
-    public class MappingException : Exception
+    public class ClassyMapException : Exception
     {
 
         #region << Constructors >>
@@ -18,7 +18,7 @@ namespace ClassyMapper.Exceptions
         /// <summary>
         /// Default constructor.
         /// </summary>
-        public MappingException() 
+        public ClassyMapException() 
             : this(null, null)
         {
         }
@@ -27,7 +27,7 @@ namespace ClassyMapper.Exceptions
         /// Constructor that takes a message.
         /// </summary>
         /// <param name="message">The message of the exception.</param>
-        public MappingException(string message) 
+        public ClassyMapException(string message) 
             : this(message, null)
         {
         }
@@ -37,7 +37,7 @@ namespace ClassyMapper.Exceptions
         /// </summary>
         /// <param name="message">The message of the exception.</param>
         /// <param name="innerException">The inner exception.</param>
-        public MappingException(string message, Exception innerException)
+        public ClassyMapException(string message, Exception innerException)
             : base(message, innerException)
         {
         }

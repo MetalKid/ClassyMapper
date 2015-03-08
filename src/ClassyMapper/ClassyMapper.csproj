@@ -49,15 +49,15 @@
   <ItemGroup>
     <Compile Include="Attributes\MapAllPropertiesAttribute.cs" />
     <Compile Include="Attributes\MapPropertyAttribute.cs" />
-    <Compile Include="ClassyMapper.cs" />
-    <Compile Include="ClassyMapperConfig.cs" />
+    <Compile Include="ClassyMap.cs" />
+    <Compile Include="ClassyMapConfig.cs" />
     <Compile Include="Enums\MapAllPropertiesTypeEnum.cs" />
     <Compile Include="Enums\MapPropertyTypeEnum.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Exceptions\MappingException.cs" />
-    <Compile Include="Interfaces\IClassyMapper.cs" />
-    <Compile Include="Interfaces\IClassyMapperConfig.cs" />
+    <Compile Include="Exceptions\ClassyMapException.cs" />
+    <Compile Include="Interfaces\IClassyMap.cs" />
+    <Compile Include="Interfaces\IClassyMapConfig.cs" />
     <Compile Include="Interfaces\IIsNullable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
