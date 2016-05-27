@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/src/ClassyMapper/bin
+/src/ClassyMapper/obj
+/src/ClassyMapperTest/bin
+/src/ClassyMapperTest/obj
+/src/ClassyMapper.sln.DotSettings.user
+/src/.vs/ClassyMapper/v14/.suo
+/src/ClassyMapper.v12.suo

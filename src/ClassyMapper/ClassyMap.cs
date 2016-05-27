@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -429,7 +430,7 @@ namespace ClassyMapper
                 method.DynamicInvoke(@from);
         }
 
-        // NOTE: Future attempt to emit IL to create new objeect to speed things up further
+        // NOTE: Future attempt to emit IL to create new object to speed things up further
 
       //private object CreateInstance(Type toType, object from)
       //  {
@@ -721,10 +722,10 @@ namespace ClassyMapper
             {
                 return;
             }
-
+            
             // Get an instance of the list or create one if needed
-            // Must use IList in order to call Add
-            IList listTo = GetValue(toObject, toProp) as IList;
+            // Must use collection with Add method available
+            dynamic listTo = GetValue(toObject, toProp);
             if (listTo == null)
             {
                 // If the list was not already newed up in constructor, then initialize it
@@ -733,7 +734,7 @@ namespace ClassyMapper
                 {
                     return; // Can't map this type of list
                 }
-                listTo = Activator.CreateInstance(listType) as IList;
+                listTo = Activator.CreateInstance(listType);
                 SetValue(toObject, toProp, listTo);
             }
             if (valueListFrom == null || listTo == null)
@@ -760,7 +761,7 @@ namespace ClassyMapper
                             object childTo = null;
                             if (mapListData != null)
                             {
-                                Dictionary<PropertyInfo, object> fromKeys = new Dictionary<PropertyInfo, object>();
+                                Dictionary<PropertyInfo, dynamic> fromKeys = new Dictionary<PropertyInfo, dynamic>();
                                 foreach (var prop in mapListData.FromPropKeys)
                                 {
                                     fromKeys.Add(prop, prop.GetValue(fromInner, null));
@@ -780,6 +781,7 @@ namespace ClassyMapper
                                         {
                                             continue;
                                         }
+
                                         isMatch = false;
                                         break;
                                     }
@@ -815,9 +817,20 @@ namespace ClassyMapper
                 i++;
             }
             Task.WaitAll(tasks.ToArray());
+
+            if (result.Count == 0)
+            {
+                return;
+            }
+            var addMethod = listTo.GetType().GetMethod("Add", new[] { toItemType });
+            if (addMethod == null)
+            {
+                throw new ClassyMapException(
+                    "Lists must have an Add method exposed.  Either IList or ICollection<T>.");
+            }
             foreach (var item in result.OrderBy(a => a.Key))
             {
-                listTo.Add(item.Value);
+                addMethod.Invoke(listTo, new [] { item.Value });
             }
         }
 
